@@ -1,0 +1,1 @@
+SQLALCHEMY_DATABASE_URI = "mysql+pymysql://campmondo:password@localhost/campmondo"
