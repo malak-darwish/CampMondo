@@ -1,5 +1,7 @@
 import os
 
+SQLALCHEMY_DATABASE_URI = "mysql+pymysql://campmondo:password@localhost/campmondo"
+
 MAIL_SERVER =   os.getenv('MAIL_SERVER')
 MAIL_PORT =     int(os.getenv('MAIL_PORT', 587))
 MAIL_USE_TLS =  True
