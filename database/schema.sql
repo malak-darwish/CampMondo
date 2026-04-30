@@ -1,9 +1,3 @@
--- ============================================================
---  CampMondo – Summer Camp Management System
---  Database Schema
---  Lebanese American University – COE 416
--- ============================================================
-
 CREATE DATABASE IF NOT EXISTS campmondo;
 USE campmondo;
 
