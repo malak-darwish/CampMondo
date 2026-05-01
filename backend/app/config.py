@@ -10,7 +10,7 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
 
 SQLALCHEMY_DATABASE_URI = os.getenv(
     'DATABASE_URL',
-    'mysql+pymysql://root:root@localhost/campmondo'
+    'mysql+pymysql://root:root123@localhost:3307/campmondo'
 )
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 

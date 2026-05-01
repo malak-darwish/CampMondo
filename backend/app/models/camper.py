@@ -6,20 +6,46 @@ class Camper(db.Model):
     __tablename__ = 'campers'
 
     id = db.Column(db.Integer, primary_key=True)
-    parent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # 🔗 relationship to User (parent)
+    parent_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False
+    )
+
+    # 👤 basic info
     full_name = db.Column(db.String(120), nullable=False)
     date_of_birth = db.Column(db.Date, nullable=False)
     gender = db.Column(db.String(20), nullable=False)
+
+    # 🚨 emergency
     emergency_contact_name = db.Column(db.String(120), nullable=False)
     emergency_contact_phone = db.Column(db.String(30), nullable=False)
+
+    # 🏥 medical
     medical_alerts = db.Column(db.Text)
+
+    # 📂 optional files
     medical_form_path = db.Column(db.String(255))
     consent_form_path = db.Column(db.String(255))
+
+    # 🕒 timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
 
-    payments = db.relationship('Payment', backref='camper', lazy=True)
+    # 💰 payments relation
+    payments = db.relationship(
+        'Payment',
+        backref='camper',
+        lazy=True
+    )
 
+    # ================= SERIALIZER =================
     def to_dict(self):
         return {
             'id': self.id,
@@ -32,4 +58,5 @@ class Camper(db.Model):
             'medical_alerts': self.medical_alerts,
             'medical_form_path': self.medical_form_path,
             'consent_form_path': self.consent_form_path,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

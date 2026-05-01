@@ -1,35 +1,86 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
   const { login, loading } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
+
     const result = await login(email, password);
-    if (!result.ok) return setError(result.message);
-    if (result.user.role === 'parent') navigate('/parent');
-    else if (result.user.role === 'staff') navigate('/staff');
-    else if (result.user.role === 'admin') navigate('/admin');
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    if (result.user.role === "staff") navigate("/staff");
+    else if (result.user.role === "admin") navigate("/admin");
   }
 
   return (
-    <main style={{ maxWidth: 420, margin: '80px auto', fontFamily: 'Arial' }}>
-      <h1>CampMondo Login</h1>
-      <form onSubmit={handleSubmit}>
-        <label>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 10, marginBottom: 12 }} />
-        <label>Password</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 10, marginBottom: 12 }} />
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-        <button disabled={loading} style={{ padding: 10, width: '100%' }}>{loading ? 'Logging in...' : 'Login'}</button>
+    <div style={styles.page}>
+      <form style={styles.card} onSubmit={handleSubmit}>
+        <h2>CampMondo Login</h2>
+
+        <input
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          style={styles.input}
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        {error && <p style={{ color: "red" }}>{error}</p>}
+
+        <button style={styles.btn} disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
       </form>
-    </main>
+    </div>
   );
 }
+
+export default Login;
+
+const styles = {
+  page: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    background: "#eef2f7"
+  },
+  card: {
+    background: "white",
+    padding: "30px",
+    borderRadius: "12px",
+    width: "300px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+  },
+  input: {
+    width: "100%",
+    padding: "10px",
+    marginBottom: "10px"
+  },
+  btn: {
+    width: "100%",
+    padding: "10px",
+    background: "#3498db",
+    color: "white",
+    border: "none"
+  }
+};
