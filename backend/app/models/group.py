@@ -1,5 +1,6 @@
 from app import db
 
+
 class Group(db.Model):
     __tablename__ = 'groups'
 
@@ -10,4 +11,12 @@ class Group(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     attendance_logs = db.relationship('AttendanceLog', backref='group', lazy=True)
-    activity_logs   = db.relationship('ActivityLog', backref='group', lazy=True)
+    activity_logs   = db.relationship('ActivityLog',   backref='group', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id':         self.id,
+            'session_id': self.session_id,
+            'name':       self.name,
+            'staff_id':   self.staff_id,
+        }
