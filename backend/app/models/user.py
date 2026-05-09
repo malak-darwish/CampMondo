@@ -31,4 +31,8 @@ class User(db.Model):
             "phone": self.phone_number,
             "is_active": self.is_active,
             "must_change_password": self.must_change_password,
+<<<<<<< HEAD
         }
+=======
+        }
+>>>>>>> origin/malak

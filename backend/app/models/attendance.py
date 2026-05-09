@@ -24,4 +24,8 @@ class AttendanceLog(db.Model):
             'checked_out_at': self.checked_out_at.isoformat() if self.checked_out_at else None,
             'status':         self.status,
             'recorded_by':    self.recorded_by,
+<<<<<<< HEAD
         }
+=======
+        }
+>>>>>>> origin/malak
