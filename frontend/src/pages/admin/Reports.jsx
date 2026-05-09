@@ -3,33 +3,71 @@ import Navbar from '../../components/Navbar'
 import api from '../../api/axios'
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  .page-root { min-height: 100vh; background: #f4f6f3; font-family: 'DM Sans', sans-serif; }
+  .page-root { min-height: 100vh; background: #f5f0e8; font-family: 'Inter', sans-serif; }
   .page-body { padding: 40px 48px; }
-  .page-top { margin-bottom: 32px; }
-  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: #0f1117; }
-  .page-sub { font-size: 14px; color: #888; margin-top: 4px; }
-  .btn { padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-dark { background: #0f1117; color: #fff; }
-  .btn-dark:hover { background: #1e2330; }
-  .btn-outline { background: transparent; border: 1.5px solid #e0e3de; color: #555; }
-  .btn-outline:hover { border-color: #aaa; }
-  .btn-sm { padding: 7px 14px; font-size: 12px; }
-  .btn-green { background: #f0fdf4; color: #16a34a; border: 1.5px solid #86efac; }
-  .btn-green:hover { background: #dcfce7; }
+  .page-top { margin-bottom: 28px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #2c1810; }
+  .page-sub { font-size: 13px; color: #8a7a65; margin-top: 4px; }
 
-  .tabs { display: flex; gap: 4px; background: #fff; border: 1px solid #e8ebe6; border-radius: 12px; padding: 4px; margin-bottom: 28px; width: fit-content; }
-  .tab { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #888; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
-  .tab.active { background: #0f1117; color: #fff; }
-  .tab:hover:not(.active) { background: #f4f6f3; color: #333; }
+  .btn { padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-secondary { background: transparent; border: 1.5px solid #c8b89a; color: #5a4a35; }
+  .btn-secondary:hover { border-color: #8a7a65; }
+  .btn-sm { padding: 6px 13px; font-size: 12px; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 11px;
+    padding: 4px;
+    margin-bottom: 26px;
+    width: fit-content;
+  }
+
+  .tab {
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: #8a7a65;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .tab.active { background: #2c4a2e; color: #fff; }
+  .tab:hover:not(.active) { background: #f0e8d8; color: #2c1810; }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+
+  .summary-card {
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 13px;
+    padding: 20px 22px;
+  }
+
+  .summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #a08c72; margin-bottom: 8px; font-weight: 600; }
+  .summary-value { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: #2c1810; }
+  .summary-value.green { color: #2e7d32; }
+  .summary-value.amber { color: #b45309; }
 
   .filters {
-    background: #fff;
-    border: 1px solid #e8ebe6;
-    border-radius: 14px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 13px;
+    padding: 18px 22px;
+    margin-bottom: 20px;
     display: flex;
     gap: 16px;
     align-items: flex-end;
@@ -37,48 +75,51 @@ const styles = `
   }
 
   .filter-field { display: flex; flex-direction: column; gap: 6px; }
-  .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #888; }
-  .filter-input { padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; background: #fafafa; transition: border-color 0.2s; }
-  .filter-input:focus { border-color: #63d2a6; }
-  .filter-select { padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; background: #fafafa; cursor: pointer; }
+  .filter-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8a7a65; }
+  .filter-input { padding: 8px 12px; border: 1.5px solid #e0d0b8; border-radius: 7px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2c1810; outline: none; background: #fdf8f0; transition: border-color 0.2s; }
+  .filter-input:focus { border-color: #3d6b45; }
+  .filter-select { padding: 8px 12px; border: 1.5px solid #e0d0b8; border-radius: 7px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2c1810; outline: none; background: #fdf8f0; cursor: pointer; }
+  .filter-select:focus { border-color: #3d6b45; }
 
-  .report-panel { background: #fff; border-radius: 16px; border: 1px solid #e8ebe6; overflow: hidden; }
+  .report-panel {
+    background: #fff9f0;
+    border-radius: 13px;
+    border: 1px solid #e8d5b5;
+    overflow: hidden;
+  }
 
-  .report-header { padding: 20px 24px; border-bottom: 1px solid #f0f2ee; display: flex; justify-content: space-between; align-items: center; }
-  .report-title { font-size: 15px; font-weight: 600; color: #0f1117; }
-  .report-actions { display: flex; gap: 10px; }
+  .report-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid #f0e8d8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .report-title { font-size: 14px; font-weight: 600; color: #2c1810; }
 
   table { width: 100%; border-collapse: collapse; }
-  thead tr { background: #fafbf9; }
-  th { padding: 12px 20px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #999; border-bottom: 1px solid #f0f2ee; }
-  td { padding: 14px 20px; font-size: 14px; color: #333; border-bottom: 1px solid #f9faf8; }
+  thead tr { background: #fdf8f0; }
+  th { padding: 11px 18px; text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #a08c72; border-bottom: 1px solid #f0e8d8; }
+  td { padding: 13px 18px; font-size: 13px; color: #3a2e1e; border-bottom: 1px solid #f8f4ee; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafbf9; }
+  tr:hover td { background: #fdf8f0; }
 
-  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: #f0fdf4; color: #16a34a; }
-  .badge-yellow { background: #fffbeb; color: #d97706; }
-  .badge-red { background: #fef2f2; color: #dc2626; }
-  .badge-gray { background: #f3f4f6; color: #6b7280; }
+  .badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+  .badge-green { background: #e8f5e9; color: #2e7d32; }
+  .badge-amber { background: #fef3e2; color: #b45309; }
+  .badge-red { background: #fdecea; color: #c62828; }
 
-  .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-
-  .summary-card { background: #fff; border: 1px solid #e8ebe6; border-radius: 14px; padding: 22px 24px; }
-  .summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 8px; font-weight: 600; }
-  .summary-value { font-size: 28px; font-weight: 700; color: #0f1117; font-family: 'DM Serif Display', serif; }
-  .summary-value.green { color: #16a34a; }
-  .summary-value.orange { color: #d97706; }
-
-  .empty-state { padding: 60px; text-align: center; color: #bbb; }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .empty-text { font-size: 14px; }
+  .empty-state { padding: 56px; text-align: center; color: #a08c72; }
+  .empty-icon { font-size: 38px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; }
 `
 
 export default function Reports() {
-    const [tab, setTab]         = useState('financial')
-    const [payments, setPayments]   = useState([])
+    const [tab, setTab]           = useState('financial')
+    const [payments, setPayments] = useState([])
     const [incidents, setIncidents] = useState([])
-    const [filters, setFilters] = useState({ session_id: '', date: '', status: '' })
+    const [filters, setFilters]   = useState({ status: '', date: '' })
 
     useEffect(() => {
         api.get('/admin/payments').then(r => setPayments(r.data.data || []))
@@ -90,12 +131,17 @@ export default function Reports() {
         return true
     })
 
-    const totalCollected  = filteredPayments.filter(p => p.status === 'Confirmed').reduce((s, p) => s + parseFloat(p.amount), 0)
-    const totalPending    = filteredPayments.filter(p => p.status === 'Pending').reduce((s, p) => s + parseFloat(p.amount), 0)
+    const totalCollected = filteredPayments
+        .filter(p => p.status === 'confirmed')
+        .reduce((s, p) => s + parseFloat(p.amount), 0)
+
+    const totalPending = filteredPayments
+        .filter(p => p.status === 'pending')
+        .reduce((s, p) => s + parseFloat(p.amount), 0)
 
     const paymentBadge = (status) => {
-        if (status === 'Confirmed') return <span className="badge badge-green">Confirmed</span>
-        if (status === 'Pending')   return <span className="badge badge-yellow">Pending</span>
+        if (status === 'confirmed') return <span className="badge badge-green">Confirmed</span>
+        if (status === 'pending')   return <span className="badge badge-amber">Pending</span>
         return <span className="badge badge-red">Failed</span>
     }
 
@@ -130,7 +176,7 @@ export default function Reports() {
                                 </div>
                                 <div className="summary-card">
                                     <div className="summary-label">Pending</div>
-                                    <div className="summary-value orange">${totalPending.toFixed(2)}</div>
+                                    <div className="summary-value amber">${totalPending.toFixed(2)}</div>
                                 </div>
                             </div>
 
@@ -139,12 +185,12 @@ export default function Reports() {
                                     <label className="filter-label">Status</label>
                                     <select className="filter-select" value={filters.status} onChange={e => f('status', e.target.value)}>
                                         <option value=''>All Statuses</option>
-                                        <option value='Confirmed'>Confirmed</option>
-                                        <option value='Pending'>Pending</option>
-                                        <option value='Failed'>Failed</option>
+                                        <option value='confirmed'>Confirmed</option>
+                                        <option value='pending'>Pending</option>
+                                        <option value='failed'>Failed</option>
                                     </select>
                                 </div>
-                                <button className="btn btn-outline btn-sm" onClick={() => setFilters({ session_id: '', date: '', status: '' })}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', date: '' })}>
                                     Clear Filters
                                 </button>
                             </div>
@@ -163,9 +209,10 @@ export default function Reports() {
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
+                                                <th>Camper</th>
+                                                <th>Session</th>
                                                 <th>Amount</th>
                                                 <th>Status</th>
-                                                <th>Card Last 4</th>
                                                 <th>Date</th>
                                             </tr>
                                         </thead>
@@ -173,10 +220,11 @@ export default function Reports() {
                                             {filteredPayments.map(p => (
                                                 <tr key={p.id}>
                                                     <td>#{p.id}</td>
+                                                    <td>{p.camper_name || '—'}</td>
+                                                    <td>{p.session_name || '—'}</td>
                                                     <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
                                                     <td>{paymentBadge(p.status)}</td>
-                                                    <td>•••• {p.card_last4}</td>
-                                                    <td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '—'}</td>
+                                                    <td>{p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : '—'}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -193,7 +241,7 @@ export default function Reports() {
                                     <label className="filter-label">Date</label>
                                     <input className="filter-input" type="date" value={filters.date} onChange={e => f('date', e.target.value)} />
                                 </div>
-                                <button className="btn btn-outline btn-sm" onClick={() => setFilters({ session_id: '', date: '', status: '' })}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', date: '' })}>
                                     Clear Filters
                                 </button>
                             </div>
@@ -222,14 +270,15 @@ export default function Reports() {
                                             {incidents
                                                 .filter(i => !filters.date || i.incident_date === filters.date)
                                                 .map(i => (
-                                                <tr key={i.id}>
-                                                    <td>{i.incident_date}</td>
-                                                    <td>{i.incident_time}</td>
-                                                    <td>#{i.camper_id}</td>
-                                                    <td style={{maxWidth:'300px'}}>{i.description}</td>
-                                                    <td>{i.action_taken || <span style={{color:'#ccc'}}>—</span>}</td>
-                                                </tr>
-                                            ))}
+                                                    <tr key={i.id}>
+                                                        <td>{i.incident_date}</td>
+                                                        <td>{i.incident_time}</td>
+                                                        <td>#{i.camper_id}</td>
+                                                        <td style={{maxWidth:'280px'}}>{i.description}</td>
+                                                        <td>{i.action_taken || <span style={{color:'#c8b89a'}}>—</span>}</td>
+                                                    </tr>
+                                                ))
+                                            }
                                         </tbody>
                                     </table>
                                 )}

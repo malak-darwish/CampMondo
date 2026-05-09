@@ -2,15 +2,15 @@ import { useState } from 'react'
 import api from '../api/axios'
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   .login-root {
     min-height: 100vh;
     display: flex;
-    font-family: 'DM Sans', sans-serif;
-    background: #0f1117;
+    font-family: 'Inter', sans-serif;
+    background: #2c4a2e;
   }
 
   .login-left {
@@ -27,10 +27,10 @@ const styles = `
   .login-left::before {
     content: '';
     position: absolute;
-    width: 500px; height: 500px;
+    width: 400px; height: 400px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,210,166,0.15) 0%, transparent 70%);
-    top: -100px; left: -100px;
+    background: rgba(232,168,56,0.08);
+    top: -80px; left: -80px;
     pointer-events: none;
   }
 
@@ -39,71 +39,88 @@ const styles = `
     position: absolute;
     width: 300px; height: 300px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,166,210,0.1) 0%, transparent 70%);
-    bottom: -50px; right: -50px;
+    background: rgba(255,255,255,0.04);
+    bottom: -60px; right: -60px;
     pointer-events: none;
   }
 
   .login-brand {
-    font-family: 'DM Serif Display', serif;
-    font-size: 48px;
+    font-family: 'Playfair Display', serif;
+    font-size: 52px;
     color: #fff;
     letter-spacing: -1px;
     margin-bottom: 8px;
   }
 
-  .login-brand span { color: #63d2a6; }
+  .login-brand span { color: #e8a838; }
 
   .login-tagline {
     color: rgba(255,255,255,0.4);
-    font-size: 15px;
-    font-weight: 300;
-    letter-spacing: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 3px;
     text-transform: uppercase;
+    margin-bottom: 56px;
   }
 
-  .login-illustration {
-    margin-top: 60px;
+  .login-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    width: 280px;
+    width: 260px;
   }
 
   .login-card {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 18px;
   }
 
-  .login-card-icon { font-size: 24px; }
-  .login-card-label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; }
-  .login-card-value { font-size: 22px; font-weight: 600; color: #fff; }
-  .login-card.accent { background: rgba(99,210,166,0.1); border-color: rgba(99,210,166,0.2); }
-  .login-card.accent .login-card-value { color: #63d2a6; }
+  .login-card.accent {
+    background: rgba(232,168,56,0.12);
+    border-color: rgba(232,168,56,0.25);
+  }
+
+  @keyframes float {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-12px); }
+    100% { transform: translateY(0px); }
+}
+
+  .login-card-icon { font-size: 22px; margin-bottom: 8px; }
+  .login-card-label { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+  .login-card-value { font-family: 'Playfair Display', serif; font-size: 24px; color: #fff; }
+  .login-card.accent .login-card-value { color: #e8a838; }
 
   .login-right {
-    width: 480px;
-    background: #fff;
+    width: 460px;
+    background: #f5f0e8;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 80px 60px;
+    padding: 72px 56px;
+  }
+
+  .login-welcome {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #3d6b45;
+    margin-bottom: 10px;
   }
 
   .login-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 32px;
-    color: #0f1117;
-    margin-bottom: 8px;
+    font-family: 'Playfair Display', serif;
+    font-size: 34px;
+    color: #2c1810;
+    margin-bottom: 6px;
+    line-height: 1.2;
   }
 
   .login-subtitle {
-    color: #888;
+    color: #8a7a65;
     font-size: 14px;
     margin-bottom: 40px;
   }
@@ -112,9 +129,9 @@ const styles = `
 
   .login-label {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: #0f1117;
+    color: #5a4a35;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 8px;
@@ -122,24 +139,24 @@ const styles = `
 
   .login-input {
     width: 100%;
-    padding: 14px 16px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: 'DM Sans', sans-serif;
-    color: #0f1117;
+    padding: 13px 15px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #2c1810;
     outline: none;
     transition: border-color 0.2s;
-    background: #fafafa;
+    background: #fff9f0;
   }
 
-  .login-input:focus { border-color: #63d2a6; background: #fff; }
+  .login-input:focus { border-color: #3d6b45; background: #fff; }
 
   .login-error {
-    background: #fff0f0;
-    border: 1px solid #fca5a5;
-    color: #dc2626;
-    padding: 12px 16px;
+    background: #fdecea;
+    border: 1px solid #f5c6c6;
+    color: #c62828;
+    padding: 11px 15px;
     border-radius: 8px;
     font-size: 13px;
     margin-bottom: 20px;
@@ -147,27 +164,27 @@ const styles = `
 
   .login-btn {
     width: 100%;
-    padding: 15px;
-    background: #0f1117;
+    padding: 14px;
+    background: #3d6b45;
     color: #fff;
     border: none;
-    border-radius: 10px;
-    font-size: 15px;
+    border-radius: 9px;
+    font-size: 14px;
     font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s;
     margin-top: 8px;
   }
 
-  .login-btn:hover { background: #1e2330; }
+  .login-btn:hover { background: #2c4a2e; }
   .login-btn:active { transform: scale(0.99); }
   .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 `
 
 export default function Login() {
-    const [form, setForm]     = useState({ email: '', password: '' })
-    const [error, setError]   = useState('')
+    const [form, setForm]       = useState({ email: '', password: '' })
+    const [error, setError]     = useState('')
     const [loading, setLoading] = useState(false)
 
     const handleLogin = async () => {
@@ -178,7 +195,6 @@ export default function Login() {
             const { token, user } = res.data.data
             localStorage.setItem('token', token)
             localStorage.setItem('user', JSON.stringify(user))
-
             if (user.role === 'admin')  window.location.href = '/admin/dashboard'
             if (user.role === 'staff')  window.location.href = '/staff/dashboard'
             if (user.role === 'parent') window.location.href = '/parent/dashboard'
@@ -198,35 +214,25 @@ export default function Login() {
                 <div className="login-left">
                     <div className="login-brand">Camp<span>Mondo</span></div>
                     <div className="login-tagline">Summer Camp Management</div>
-                    <div className="login-illustration">
-                        <div className="login-card accent">
-                            <div className="login-card-icon">⛺</div>
-                            <div className="login-card-label">Sessions</div>
-                            <div className="login-card-value">12</div>
-                        </div>
-                        <div className="login-card">
-                            <div className="login-card-icon">👦</div>
-                            <div className="login-card-label">Campers</div>
-                            <div className="login-card-value">248</div>
-                        </div>
-                        <div className="login-card">
-                            <div className="login-card-icon">👥</div>
-                            <div className="login-card-label">Groups</div>
-                            <div className="login-card-value">18</div>
-                        </div>
-                        <div className="login-card accent">
-                            <div className="login-card-icon">✅</div>
-                            <div className="login-card-label">Attendance</div>
-                            <div className="login-card-value">96%</div>
-                        </div>
-                    </div>
+                    <div style={{marginTop: '48px', width: '420px', textAlign: 'center'}}>
+                      <img
+                          src="/camping.svg"
+                          alt="Camp illustration"
+                          style={{
+                              width: '100%',
+                              maxWidth: '420px',
+                              animation: 'float 3s ease-in-out infinite'
+                          }}
+                      />
+                  </div>
                 </div>
 
                 <div className="login-right">
-                    <div className="login-title">Welcome back</div>
-                    <div className="login-subtitle">Sign in to your CampMondo account</div>
+                    <div className="login-welcome">Welcome back</div>
+                    <div className="login-title">Sign in to CampMondo</div>
+                    <div className="login-subtitle">Manage your camp from one place</div>
 
-                    {error && <div className="login-error">{error}</div>}
+                    {error && <div className="login-error">⚠ {error}</div>}
 
                     <div className="login-field">
                         <label className="login-label">Email</label>
@@ -253,7 +259,7 @@ export default function Login() {
                     </div>
 
                     <button className="login-btn" onClick={handleLogin} disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Signing in...' : 'Sign In →'}
                     </button>
                 </div>
             </div>

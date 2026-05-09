@@ -26,6 +26,7 @@ class Session(db.Model):
             'max_capacity':   self.max_capacity,
             'enrollment_fee': float(self.enrollment_fee),
             'created_by':     self.created_by,
+            'activities':     [a.to_dict() for a in self.activity_programs],  # add this
         }
 
 

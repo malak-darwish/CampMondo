@@ -3,92 +3,102 @@ import Navbar from '../../components/Navbar'
 import api from '../../api/axios'
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  .page-root { min-height: 100vh; background: #f4f6f3; font-family: 'DM Sans', sans-serif; }
+  .page-root { min-height: 100vh; background: #f5f0e8; font-family: 'Inter', sans-serif; }
   .page-body { padding: 40px 48px; }
   .page-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
-  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: #0f1117; }
-  .page-sub { font-size: 14px; color: #888; margin-top: 4px; }
-  .btn { padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-dark { background: #0f1117; color: #fff; }
-  .btn-dark:hover { background: #1e2330; }
-  .btn-outline { background: transparent; border: 1.5px solid #e0e3de; color: #555; }
-  .btn-outline:hover { border-color: #aaa; }
-  .btn-danger { background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5; }
-  .btn-danger:hover { background: #fee2e2; }
-  .btn-sm { padding: 7px 14px; font-size: 12px; }
-  .error-box { background: #fff0f0; border: 1px solid #fca5a5; color: #dc2626; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
-  .success-box { background: #f0fdf4; border: 1px solid #86efac; color: #16a34a; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #2c1810; }
+  .page-sub { font-size: 13px; color: #8a7a65; margin-top: 4px; }
+
+  .btn { padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: #3d6b45; color: #fff; }
+  .btn-primary:hover { background: #2c4a2e; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-secondary { background: transparent; border: 1.5px solid #c8b89a; color: #5a4a35; }
+  .btn-secondary:hover { border-color: #8a7a65; }
+  .btn-danger { background: #fdecea; color: #c62828; border: 1.5px solid #f5c6c6; }
+  .btn-danger:hover { background: #fbd5d3; }
+  .btn-sm { padding: 6px 13px; font-size: 12px; }
+
+  .alert { padding: 11px 15px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .alert-error { background: #fdecea; border: 1px solid #f5c6c6; color: #c62828; }
+  .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
 
   .form-panel {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e8ebe6;
-    padding: 28px 32px;
-    margin-bottom: 32px;
+    background: #fff9f0;
+    border-radius: 14px;
+    border: 1px solid #e8d5b5;
+    padding: 26px 30px;
+    margin-bottom: 28px;
   }
 
-  .form-panel-title { font-size: 16px; font-weight: 600; color: #0f1117; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f0f2ee; }
+  .form-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c1810;
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0e8d8;
+  }
 
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-
-  .form-field { display: flex; flex-direction: column; gap: 8px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .form-field { display: flex; flex-direction: column; gap: 7px; }
   .form-field.full { grid-column: 1 / -1; }
-
-  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; }
-
+  .form-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8a7a65; }
   .form-input {
-    padding: 11px 14px;
-    border: 1.5px solid #e5e7eb;
+    padding: 10px 13px;
+    border: 1.5px solid #e0d0b8;
     border-radius: 8px;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    color: #0f1117;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: #2c1810;
     outline: none;
     transition: border-color 0.2s;
-    background: #fafafa;
+    background: #fdf8f0;
   }
+  .form-input:focus { border-color: #3d6b45; background: #fff; }
+  .form-actions { display: flex; gap: 10px; margin-top: 22px; }
 
-  .form-input:focus { border-color: #63d2a6; background: #fff; }
-
-  .form-actions { display: flex; gap: 12px; margin-top: 24px; }
-
-  .sessions-table {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e8ebe6;
+  .table-panel {
+    background: #fff9f0;
+    border-radius: 14px;
+    border: 1px solid #e8d5b5;
     overflow: hidden;
   }
 
   .table-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #f0f2ee;
+    padding: 18px 22px;
+    border-bottom: 1px solid #f0e8d8;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
-  .table-title { font-size: 15px; font-weight: 600; color: #0f1117; }
-  .table-count { font-size: 12px; color: #aaa; background: #f4f6f3; padding: 3px 10px; border-radius: 20px; }
+  .table-title { font-size: 14px; font-weight: 600; color: #2c1810; }
+  .table-count {
+    font-size: 11px;
+    color: #8a7a65;
+    background: #f0e8d8;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
 
   table { width: 100%; border-collapse: collapse; }
-  thead tr { background: #fafbf9; }
-  th { padding: 12px 20px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #999; border-bottom: 1px solid #f0f2ee; }
-  td { padding: 16px 20px; font-size: 14px; color: #333; border-bottom: 1px solid #f9faf8; }
+  thead tr { background: #fdf8f0; }
+  th { padding: 11px 18px; text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #a08c72; border-bottom: 1px solid #f0e8d8; }
+  td { padding: 14px 18px; font-size: 13px; color: #3a2e1e; border-bottom: 1px solid #f8f4ee; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafbf9; }
+  tr:hover td { background: #fdf8f0; }
 
   .td-actions { display: flex; gap: 8px; }
 
-  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: #f0fdf4; color: #16a34a; }
-  .badge-blue { background: #eff6ff; color: #2563eb; }
+  .badge-blue { background: #e8f0fe; color: #1a56db; padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; }
 
-  .empty-state { padding: 60px; text-align: center; color: #bbb; }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .empty-text { font-size: 14px; }
+  .empty-state { padding: 56px; text-align: center; color: #a08c72; }
+  .empty-icon { font-size: 38px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; }
 `
 
 const emptyForm = { name: '', start_date: '', end_date: '', max_capacity: '', enrollment_fee: '' }
@@ -165,13 +175,13 @@ export default function ManageSessions() {
                             <div className="page-title">Sessions</div>
                             <div className="page-sub">Create and manage camp sessions</div>
                         </div>
-                        <button className="btn btn-dark" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm) }}>
+                        <button className="btn btn-primary" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm) }}>
                             {showForm ? '✕ Cancel' : '+ New Session'}
                         </button>
                     </div>
 
-                    {error   && <div className="error-box">⚠ {error}</div>}
-                    {success && <div className="success-box">✓ {success}</div>}
+                    {error   && <div className="alert alert-error">⚠ {error}</div>}
+                    {success && <div className="alert alert-success">✓ {success}</div>}
 
                     {showForm && (
                         <div className="form-panel">
@@ -199,15 +209,15 @@ export default function ManageSessions() {
                                 </div>
                             </div>
                             <div className="form-actions">
-                                <button className="btn btn-dark" onClick={handleSubmit} disabled={loading}>
+                                <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
                                     {loading ? 'Saving...' : editingId ? 'Update Session' : 'Create Session'}
                                 </button>
-                                <button className="btn btn-outline" onClick={resetForm}>Cancel</button>
+                                <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
                             </div>
                         </div>
                     )}
 
-                    <div className="sessions-table">
+                    <div className="table-panel">
                         <div className="table-header">
                             <div className="table-title">All Sessions</div>
                             <div className="table-count">{sessions.length} sessions</div>
@@ -235,11 +245,11 @@ export default function ManageSessions() {
                                             <td><strong>{s.name}</strong></td>
                                             <td>{s.start_date}</td>
                                             <td>{s.end_date}</td>
-                                            <td><span className="badge badge-blue">{s.max_capacity} spots</span></td>
+                                            <td><span className="badge-blue">{s.max_capacity} spots</span></td>
                                             <td><strong>${s.enrollment_fee}</strong></td>
                                             <td>
                                                 <div className="td-actions">
-                                                    <button className="btn btn-outline btn-sm" onClick={() => handleEdit(s)}>Edit</button>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(s)}>Edit</button>
                                                     <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)}>Delete</button>
                                                 </div>
                                             </td>

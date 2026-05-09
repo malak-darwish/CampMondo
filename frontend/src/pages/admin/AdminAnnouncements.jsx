@@ -3,74 +3,93 @@ import Navbar from '../../components/Navbar'
 import api from '../../api/axios'
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  .page-root { min-height: 100vh; background: #f4f6f3; font-family: 'DM Sans', sans-serif; }
+  .page-root { min-height: 100vh; background: #f5f0e8; font-family: 'Inter', sans-serif; }
   .page-body { padding: 40px 48px; }
-  .page-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
-  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: #0f1117; }
-  .page-sub { font-size: 14px; color: #888; margin-top: 4px; }
-  .btn { padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-dark { background: #0f1117; color: #fff; }
-  .btn-dark:hover { background: #1e2330; }
-  .btn-outline { background: transparent; border: 1.5px solid #e0e3de; color: #555; }
-  .btn-outline:hover { border-color: #aaa; }
-  .error-box { background: #fff0f0; border: 1px solid #fca5a5; color: #dc2626; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
-  .success-box { background: #f0fdf4; border: 1px solid #86efac; color: #16a34a; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .page-top { margin-bottom: 32px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #2c1810; }
+  .page-sub { font-size: 13px; color: #8a7a65; margin-top: 4px; }
 
-  .layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+  .btn { padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: #3d6b45; color: #fff; }
+  .btn-primary:hover { background: #2c4a2e; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-secondary { background: transparent; border: 1.5px solid #c8b89a; color: #5a4a35; }
+  .btn-secondary:hover { border-color: #8a7a65; }
 
-  .form-panel { background: #fff; border-radius: 16px; border: 1px solid #e8ebe6; padding: 28px 32px; position: sticky; top: 88px; }
-  .form-panel-title { font-size: 15px; font-weight: 600; color: #0f1117; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f0f2ee; }
-  .form-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; }
-  .form-input { padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; transition: border-color 0.2s; background: #fafafa; }
-  .form-input:focus { border-color: #63d2a6; background: #fff; }
-  .form-textarea { padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; transition: border-color 0.2s; background: #fafafa; resize: vertical; min-height: 100px; }
-  .form-textarea:focus { border-color: #63d2a6; background: #fff; }
-  .form-select { padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; background: #fafafa; cursor: pointer; }
-  .form-select:focus { border-color: #63d2a6; }
+  .alert { padding: 11px 15px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .alert-error { background: #fdecea; border: 1px solid #f5c6c6; color: #c62828; }
+  .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
 
-  .ann-list { display: flex; flex-direction: column; gap: 14px; }
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .section-title { font-size: 14px; font-weight: 600; color: #2c1810; }
+  .section-count { font-size: 11px; color: #8a7a65; background: #f0e8d8; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+  .ann-list { display: flex; flex-direction: column; gap: 12px; }
 
   .ann-card {
-    background: #fff;
-    border: 1px solid #e8ebe6;
-    border-radius: 14px;
-    padding: 24px;
-    border-left: 4px solid #63d2a6;
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-left: 4px solid #3d6b45;
+    border-radius: 13px;
+    padding: 22px;
     transition: box-shadow 0.2s;
   }
 
-  .ann-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
-  .ann-card.targeted { border-left-color: #f59e0b; }
-  .ann-card.group { border-left-color: #6366f1; }
+  .ann-card:hover { box-shadow: 0 4px 14px rgba(44,24,16,0.06); }
+  .ann-card.session { border-left-color: #e8a838; }
+  .ann-card.group { border-left-color: #6b5b3d; }
 
   .ann-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-  .ann-title { font-size: 16px; font-weight: 600; color: #0f1117; }
-  .ann-body { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 14px; }
-
+  .ann-title { font-size: 15px; font-weight: 600; color: #2c1810; }
+  .ann-body { font-size: 13px; color: #5a4a35; line-height: 1.6; margin-bottom: 14px; }
   .ann-meta { display: flex; gap: 10px; align-items: center; }
-  .ann-date { font-size: 12px; color: #bbb; }
+  .ann-date { font-size: 11px; color: #a08c72; }
 
-  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: #f0fdf4; color: #16a34a; }
-  .badge-yellow { background: #fffbeb; color: #d97706; }
-  .badge-purple { background: #f5f3ff; color: #7c3aed; }
+  .badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+  .badge-green { background: #e8f5e9; color: #2e7d32; }
+  .badge-amber { background: #fef3e2; color: #b45309; }
+  .badge-brown { background: #f5ede0; color: #6b5b3d; }
 
-  .empty-state { padding: 60px; text-align: center; color: #bbb; background: #fff; border-radius: 16px; border: 1px solid #e8ebe6; }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .empty-text { font-size: 14px; }
+  .form-panel {
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 13px;
+    padding: 22px;
+    position: sticky;
+    top: 80px;
+  }
 
-  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .section-title { font-size: 15px; font-weight: 600; color: #0f1117; }
-  .section-count { font-size: 12px; color: #aaa; background: #f4f6f3; padding: 3px 10px; border-radius: 20px; }
+  .form-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c1810;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0e8d8;
+  }
+
+  .form-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .form-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8a7a65; }
+  .form-input { padding: 10px 13px; border: 1.5px solid #e0d0b8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2c1810; outline: none; transition: border-color 0.2s; background: #fdf8f0; }
+  .form-input:focus { border-color: #3d6b45; background: #fff; }
+  .form-textarea { padding: 10px 13px; border: 1.5px solid #e0d0b8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2c1810; outline: none; transition: border-color 0.2s; background: #fdf8f0; resize: vertical; min-height: 100px; }
+  .form-textarea:focus { border-color: #3d6b45; background: #fff; }
+  .form-select { padding: 10px 13px; border: 1.5px solid #e0d0b8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2c1810; outline: none; background: #fdf8f0; cursor: pointer; }
+  .form-select:focus { border-color: #3d6b45; }
+
+  .empty-state { padding: 56px; text-align: center; color: #a08c72; background: #fff9f0; border-radius: 13px; border: 1px solid #e8d5b5; }
+  .empty-icon { font-size: 38px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; }
 `
 
 export default function AdminAnnouncements() {
     const [announcements, setAnnouncements] = useState([])
-    const [form, setForm] = useState({ title: '', body: '', target_type: 'system_wide', target_id: '' })
-    const [error, setError]   = useState('')
+    const [form, setForm]   = useState({ title: '', body: '', target_type: 'system_wide', target_id: '' })
+    const [error, setError]     = useState('')
     const [success, setSuccess] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -85,7 +104,11 @@ export default function AdminAnnouncements() {
         if (!form.title || !form.body) return setError('Title and body are required')
         setLoading(true)
         try {
-            await api.post('/admin/announcements', form)
+            const payload = {
+                ...form,
+                target_id: form.target_id ? parseInt(form.target_id) : null
+            }
+            await api.post('/admin/announcements', payload)
             setSuccess('Announcement posted successfully')
             setForm({ title: '', body: '', target_type: 'system_wide', target_id: '' })
             loadAnnouncements()
@@ -100,8 +123,8 @@ export default function AdminAnnouncements() {
 
     const targetBadge = (type) => {
         if (type === 'system_wide') return <span className="badge badge-green">System-wide</span>
-        if (type === 'session')     return <span className="badge badge-yellow">Session</span>
-        return <span className="badge badge-purple">Group</span>
+        if (type === 'session')     return <span className="badge badge-amber">Session</span>
+        return <span className="badge badge-brown">Group</span>
     }
 
     const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -113,14 +136,12 @@ export default function AdminAnnouncements() {
                 <Navbar />
                 <div className="page-body">
                     <div className="page-top">
-                        <div>
-                            <div className="page-title">Announcements</div>
-                            <div className="page-sub">Post updates to parents and staff</div>
-                        </div>
+                        <div className="page-title">Announcements</div>
+                        <div className="page-sub">Post updates to parents and staff</div>
                     </div>
 
-                    {error   && <div className="error-box">⚠ {error}</div>}
-                    {success && <div className="success-box">✓ {success}</div>}
+                    {error   && <div className="alert alert-error">⚠ {error}</div>}
+                    {success && <div className="alert alert-success">✓ {success}</div>}
 
                     <div className="layout">
                         <div>
@@ -181,7 +202,7 @@ export default function AdminAnnouncements() {
                                 </div>
                             )}
 
-                            <button className="btn btn-dark" style={{width:'100%'}} onClick={handleSubmit} disabled={loading}>
+                            <button className="btn btn-primary" style={{width:'100%'}} onClick={handleSubmit} disabled={loading}>
                                 {loading ? 'Posting...' : '📢 Post Announcement'}
                             </button>
                         </div>

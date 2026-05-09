@@ -3,87 +3,102 @@ import Navbar from '../../components/Navbar'
 import api from '../../api/axios'
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  .page-root { min-height: 100vh; background: #f4f6f3; font-family: 'DM Sans', sans-serif; }
+  .page-root { min-height: 100vh; background: #f5f0e8; font-family: 'Inter', sans-serif; }
   .page-body { padding: 40px 48px; }
   .page-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
-  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: #0f1117; }
-  .page-sub { font-size: 14px; color: #888; margin-top: 4px; }
-  .btn { padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-dark { background: #0f1117; color: #fff; }
-  .btn-dark:hover { background: #1e2330; }
-  .btn-outline { background: transparent; border: 1.5px solid #e0e3de; color: #555; }
-  .btn-outline:hover { border-color: #aaa; }
-  .btn-sm { padding: 7px 14px; font-size: 12px; }
-  .btn-green { background: #f0fdf4; color: #16a34a; border: 1.5px solid #86efac; }
-  .btn-green:hover { background: #dcfce7; }
-  .error-box { background: #fff0f0; border: 1px solid #fca5a5; color: #dc2626; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
-  .success-box { background: #f0fdf4; border: 1px solid #86efac; color: #16a34a; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 32px; color: #2c1810; }
+  .page-sub { font-size: 13px; color: #8a7a65; margin-top: 4px; }
+
+  .btn { padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: #3d6b45; color: #fff; }
+  .btn-primary:hover { background: #2c4a2e; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .alert { padding: 11px 15px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .alert-error { background: #fdecea; border: 1px solid #f5c6c6; color: #c62828; }
+  .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
 
   .session-picker {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e8ebe6;
-    padding: 28px 32px;
-    margin-bottom: 28px;
+    background: #fff9f0;
+    border-radius: 14px;
+    border: 1px solid #e8d5b5;
+    padding: 24px 28px;
+    margin-bottom: 24px;
   }
 
-  .session-picker-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 10px; display: block; }
+  .picker-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8a7a65;
+    margin-bottom: 10px;
+    display: block;
+  }
 
   .session-select {
     width: 100%;
-    padding: 12px 16px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: 'DM Sans', sans-serif;
-    color: #0f1117;
-    background: #fafafa;
+    max-width: 420px;
+    padding: 11px 14px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #2c1810;
+    background: #fdf8f0;
     outline: none;
     cursor: pointer;
     transition: border-color 0.2s;
-    max-width: 400px;
   }
 
-  .session-select:focus { border-color: #63d2a6; }
+  .session-select:focus { border-color: #3d6b45; }
 
-  .groups-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+  .groups-layout { display: grid; grid-template-columns: 1fr 320px; gap: 22px; align-items: start; }
 
-  .groups-list { display: flex; flex-direction: column; gap: 14px; }
+  .groups-count { font-size: 13px; font-weight: 600; color: #5a4a35; margin-bottom: 14px; }
+
+  .groups-list { display: flex; flex-direction: column; gap: 12px; }
 
   .group-card {
-    background: #fff;
-    border: 1px solid #e8ebe6;
-    border-radius: 14px;
-    padding: 22px 24px;
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 13px;
+    padding: 20px 22px;
     transition: box-shadow 0.2s;
   }
 
-  .group-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+  .group-card:hover { box-shadow: 0 4px 14px rgba(44,24,16,0.06); }
 
-  .group-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .group-name { font-size: 16px; font-weight: 600; color: #0f1117; }
-  .group-id { font-size: 11px; color: #ccc; }
+  .group-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .group-name { font-size: 15px; font-weight: 600; color: #2c1810; }
+  .group-id { font-size: 11px; color: #c8b89a; }
 
   .group-staff-row { display: flex; align-items: center; gap: 12px; }
-  .group-staff-label { font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
+  .staff-label { font-size: 10px; color: #a08c72; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; font-weight: 600; }
 
   .staff-select {
     flex: 1;
-    padding: 9px 12px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
+    padding: 8px 11px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 7px;
     font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    color: #0f1117;
-    background: #fafafa;
+    font-family: 'Inter', sans-serif;
+    color: #2c1810;
+    background: #fdf8f0;
     outline: none;
     cursor: pointer;
     transition: border-color 0.2s;
   }
 
-  .staff-select:focus { border-color: #63d2a6; }
+  .staff-select:focus { border-color: #3d6b45; }
 
   .staff-assigned {
     display: flex;
@@ -92,43 +107,67 @@ const styles = `
     flex: 1;
   }
 
-  .staff-dot { width: 8px; height: 8px; border-radius: 50%; background: #63d2a6; }
-  .staff-assigned-name { font-size: 13px; color: #0f1117; font-weight: 500; }
+  .staff-dot { width: 7px; height: 7px; border-radius: 50%; background: #3d6b45; flex-shrink: 0; }
+  .staff-name { font-size: 13px; color: #2c1810; font-weight: 500; }
 
-  .create-group-panel {
-    background: #fff;
-    border: 1px solid #e8ebe6;
-    border-radius: 14px;
-    padding: 24px;
+  .create-panel {
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 13px;
+    padding: 22px;
     position: sticky;
-    top: 88px;
+    top: 80px;
   }
 
-  .create-group-title { font-size: 15px; font-weight: 600; color: #0f1117; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f0f2ee; }
+  .create-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c1810;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0e8d8;
+  }
 
-  .form-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; }
-  .form-input { padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: #0f1117; outline: none; transition: border-color 0.2s; background: #fafafa; }
-  .form-input:focus { border-color: #63d2a6; background: #fff; }
+  .form-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .form-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8a7a65; }
+  .form-input {
+    padding: 10px 13px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: #2c1810;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fdf8f0;
+  }
+  .form-input:focus { border-color: #3d6b45; background: #fff; }
 
-  .empty-state { padding: 48px 32px; text-align: center; color: #bbb; background: #fff; border-radius: 16px; border: 1px solid #e8ebe6; }
-  .empty-icon { font-size: 36px; margin-bottom: 12px; }
-  .empty-text { font-size: 14px; }
+  .empty-state {
+    padding: 44px 28px;
+    text-align: center;
+    color: #a08c72;
+    background: #fff9f0;
+    border-radius: 13px;
+    border: 1px solid #e8d5b5;
+  }
+  .empty-icon { font-size: 34px; margin-bottom: 10px; }
+  .empty-text { font-size: 13px; }
 
-  .no-session { padding: 80px; text-align: center; color: #bbb; }
-  .no-session-icon { font-size: 48px; margin-bottom: 16px; }
-  .no-session-text { font-size: 15px; }
+  .no-session { padding: 72px; text-align: center; color: #a08c72; }
+  .no-session-icon { font-size: 44px; margin-bottom: 14px; }
+  .no-session-text { font-size: 14px; }
 `
 
 export default function ManageGroups() {
-    const [sessions, setSessions]         = useState([])
-    const [selectedSession, setSelected]  = useState('')
-    const [groups, setGroups]             = useState([])
-    const [staffList, setStaffList]       = useState([])
-    const [groupName, setGroupName]       = useState('')
-    const [error, setError]               = useState('')
-    const [success, setSuccess]           = useState('')
-    const [loading, setLoading]           = useState(false)
+    const [sessions, setSessions]        = useState([])
+    const [selectedSession, setSelected] = useState('')
+    const [groups, setGroups]            = useState([])
+    const [staffList, setStaffList]      = useState([])
+    const [groupName, setGroupName]      = useState('')
+    const [error, setError]              = useState('')
+    const [success, setSuccess]          = useState('')
+    const [loading, setLoading]          = useState(false)
 
     useEffect(() => {
         api.get('/admin/sessions').then(r => setSessions(r.data.data || []))
@@ -191,11 +230,11 @@ export default function ManageGroups() {
                         </div>
                     </div>
 
-                    {error   && <div className="error-box">⚠ {error}</div>}
-                    {success && <div className="success-box">✓ {success}</div>}
+                    {error   && <div className="alert alert-error">⚠ {error}</div>}
+                    {success && <div className="alert alert-success">✓ {success}</div>}
 
                     <div className="session-picker">
-                        <label className="session-picker-label">Select Session</label>
+                        <label className="picker-label">Select Session</label>
                         <select className="session-select" value={selectedSession} onChange={handleSessionChange}>
                             <option value=''>— Choose a session —</option>
                             {sessions.map(s => (
@@ -212,14 +251,11 @@ export default function ManageGroups() {
                     ) : (
                         <div className="groups-layout">
                             <div>
-                                <div style={{fontSize:'15px', fontWeight:'600', color:'#0f1117', marginBottom:'16px'}}>
-                                    Groups ({groups.length})
-                                </div>
-
+                                <div className="groups-count">Groups ({groups.length})</div>
                                 {groups.length === 0 ? (
                                     <div className="empty-state">
                                         <div className="empty-icon">👥</div>
-                                        <div className="empty-text">No groups yet. Create the first group using the panel on the right.</div>
+                                        <div className="empty-text">No groups yet. Create one using the panel on the right.</div>
                                     </div>
                                 ) : (
                                     <div className="groups-list">
@@ -232,19 +268,19 @@ export default function ManageGroups() {
                                                         <div className="group-id">ID #{g.id}</div>
                                                     </div>
                                                     <div className="group-staff-row">
-                                                        <div className="group-staff-label">Staff</div>
+                                                        <div className="staff-label">Staff</div>
                                                         {assignedName ? (
                                                             <div className="staff-assigned">
                                                                 <div className="staff-dot"></div>
-                                                                <div className="staff-assigned-name">{assignedName}</div>
+                                                                <div className="staff-name">{assignedName}</div>
                                                                 <select
                                                                     className="staff-select"
-                                                                    style={{maxWidth:'160px'}}
+                                                                    style={{maxWidth:'150px'}}
                                                                     defaultValue=''
                                                                     onChange={e => e.target.value && handleAssignStaff(g.id, e.target.value)}
                                                                 >
                                                                     <option value=''>Reassign...</option>
-                                                                    {staffList.filter(s => s.account_status === 'active').map(s => (
+                                                                    {staffList.filter(s => s.is_active).map(s => (
                                                                         <option key={s.id} value={s.id}>{s.full_name}</option>
                                                                     ))}
                                                                 </select>
@@ -256,7 +292,7 @@ export default function ManageGroups() {
                                                                 onChange={e => e.target.value && handleAssignStaff(g.id, e.target.value)}
                                                             >
                                                                 <option value=''>— Assign staff member —</option>
-                                                                {staffList.filter(s => s.account_status === 'active').map(s => (
+                                                                {staffList.filter(s => s.is_active).map(s => (
                                                                     <option key={s.id} value={s.id}>{s.full_name}</option>
                                                                 ))}
                                                             </select>
@@ -269,8 +305,8 @@ export default function ManageGroups() {
                                 )}
                             </div>
 
-                            <div className="create-group-panel">
-                                <div className="create-group-title">Create New Group</div>
+                            <div className="create-panel">
+                                <div className="create-panel-title">Create New Group</div>
                                 <div className="form-field">
                                     <label className="form-label">Group Name</label>
                                     <input
@@ -281,7 +317,12 @@ export default function ManageGroups() {
                                         onKeyDown={e => e.key === 'Enter' && handleCreateGroup()}
                                     />
                                 </div>
-                                <button className="btn btn-dark" style={{width:'100%'}} onClick={handleCreateGroup} disabled={loading}>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{width:'100%'}}
+                                    onClick={handleCreateGroup}
+                                    disabled={loading}
+                                >
                                     {loading ? 'Creating...' : '+ Create Group'}
                                 </button>
                             </div>
