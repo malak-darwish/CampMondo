@@ -20,8 +20,6 @@ class AuditLog(db.Model):
             'target_id':    self.target_id,
             'details':      self.details,
             'created_at':   self.created_at.isoformat() if self.created_at else None,
-<<<<<<< HEAD
+
         }
-=======
-        }
->>>>>>> origin/malak
+

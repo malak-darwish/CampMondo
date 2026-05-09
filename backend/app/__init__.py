@@ -52,9 +52,4 @@ def create_app():
     @app.get("/api/health")
     def health():
         return {"success": True, "message": "CampMondo API is running"}
-
-<<<<<<< HEAD
     return app
-=======
-    return app
->>>>>>> origin/malak

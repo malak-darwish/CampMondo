@@ -4,25 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-<<<<<<< HEAD
-SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-change-me')
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-dev-secret-change-me')
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
-
-SQLALCHEMY_DATABASE_URI = os.getenv(
-    'DATABASE_URL',
-    'mysql+pymysql://campmondo:password123@localhost/campmondo'
-)
-SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-MAIL_SERVER = os.getenv('MAIL_SERVER')
-MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
-MAIL_USE_TLS = True
-MAIL_USERNAME = os.getenv('MAIL_USERNAME')
-MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
-=======
-
 def _bool(name: str, default: bool = False) -> bool:
     """Parse a boolean env var (accepts true/1/yes)."""
     val = os.getenv(name)
@@ -66,4 +47,4 @@ MAIL_USERNAME       = os.getenv('MAIL_USERNAME')
 MAIL_PASSWORD       = os.getenv('MAIL_PASSWORD')                # Gmail App Password (not regular password)
 MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER') or MAIL_USERNAME
 MAIL_SUPPRESS_SEND  = _bool('MAIL_SUPPRESS_SEND', False)         # True for tests
->>>>>>> origin/malak
+
