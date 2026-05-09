@@ -37,19 +37,7 @@ def role_required(*roles):
 
 def current_user():
     user_id = get_jwt_identity()
-<<<<<<< HEAD
-    return User.query.get(user_id)
 
-
-def account_is_locked(user: User) -> bool:
-    if user.account_status == 'deactivated':
-        return True
-    if user.locked_until and user.locked_until > datetime.utcnow():
-        return True
-    if user.account_status == 'locked' and user.locked_until and user.locked_until <= datetime.utcnow():
-        user.account_status = 'active'
-        user.failed_login_attempts = 0
-=======
     return User.query.get(int(user_id))
 
 
@@ -63,15 +51,11 @@ def account_is_locked(user: User) -> bool:
     # Lock expired — auto-unlock
     if user.locked_until and user.locked_until <= datetime.utcnow():
         user.failed_attempts = 0
->>>>>>> origin/malak
+
         user.locked_until = None
     return False
 
 
 def lock_account(user: User):
-<<<<<<< HEAD
-    user.account_status = 'locked'
     user.locked_until = datetime.utcnow() + timedelta(minutes=15)
-=======
-    user.locked_until = datetime.utcnow() + timedelta(minutes=15)
->>>>>>> origin/malak
+
