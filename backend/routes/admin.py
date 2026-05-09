@@ -9,7 +9,7 @@ from app.models.payment import Payment
 from app.models.announcement import Announcement
 from app.models.incident import IncidentReport
 from app.utils.auth_helpers import role_required, hash_password
-from app.utils.email import send_email
+from app.utils.email import send_staff_welcome_email
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -184,51 +184,49 @@ def assign_camper(group_id):
 # ═══════════════════════════════════════════════════════════
 #  STAFF MANAGEMENT
 # ═══════════════════════════════════════════════════════════
-
+ 
 @admin_bp.get('/staff')
 @role_required('admin')
 def get_staff():
     staff_list = User.query.filter_by(role='staff').all()
     return ok([s.to_dict() for s in staff_list])
-
-
+ 
+ 
 @admin_bp.post('/staff')
 @role_required('admin')
 def create_staff():
     data = request.get_json() or {}
-
+ 
     if not data.get('full_name') or not data.get('email'):
         return fail('Full name and email are required')
-
-    if User.query.filter_by(email=data['email'].lower()).first():
+ 
+    email = data['email'].strip().lower()
+    if User.query.filter_by(email=email).first():
         return fail('Email is already registered', 409)
-
-    temp_password = secrets.token_urlsafe(8)
-
+ 
+    # Generate a temp password that satisfies is_strong_password
+    # (8+ chars, upper, lower, digit). token_urlsafe gives entropy;
+    # we prepend a fixed seed to guarantee the policy is met.
+    temp_password = 'Cm1' + secrets.token_urlsafe(9)
+ 
     new_staff = User(
-        full_name            = data['full_name'],
-        email                = data['email'].lower(),
+        full_name            = data['full_name'].strip(),
+        email                = email,
         password_hash        = hash_password(temp_password),
         role                 = 'staff',
         phone_number         = data.get('phone_number'),
-        must_change_password = True
+        must_change_password = True,
+        is_active            = True,
     )
     db.session.add(new_staff)
     db.session.commit()
-
+ 
     # FR 4.8: send temp password via email
-    send_email(
-        new_staff.email,
-        'Your CampMondo Staff Account',
-        f'Hi {new_staff.full_name},\n\n'
-        f'Your staff account has been created.\n\n'
-        f'Temporary password: {temp_password}\n\n'
-        f'Please log in and change your password immediately.\n\n'
-        f'CampMondo Team'
-    )
+    send_staff_welcome_email(new_staff, temp_password)
+ 
     return ok(new_staff.to_dict(), 'Staff account created', 201)
-
-
+ 
+ 
 @admin_bp.put('/staff/<int:staff_id>/deactivate')
 @role_required('admin')
 def deactivate_staff(staff_id):
@@ -238,8 +236,8 @@ def deactivate_staff(staff_id):
     staff.is_active = False
     db.session.commit()
     return ok(staff.to_dict(), 'Staff account deactivated')
-
-
+ 
+ 
 @admin_bp.put('/staff/<int:staff_id>/reactivate')
 @role_required('admin')
 def reactivate_staff(staff_id):
@@ -249,7 +247,6 @@ def reactivate_staff(staff_id):
     staff.is_active = True
     db.session.commit()
     return ok(staff.to_dict(), 'Staff account reactivated')
-
 
 # ═══════════════════════════════════════════════════════════
 #  PAYMENTS (admin view)

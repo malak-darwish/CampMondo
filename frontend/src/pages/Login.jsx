@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import api from '../api/axios'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
@@ -63,35 +64,11 @@ const styles = `
     margin-bottom: 56px;
   }
 
-  .login-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    width: 260px;
-  }
-
-  .login-card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
-    padding: 18px;
-  }
-
-  .login-card.accent {
-    background: rgba(232,168,56,0.12);
-    border-color: rgba(232,168,56,0.25);
-  }
-
   @keyframes float {
     0%   { transform: translateY(0px); }
     50%  { transform: translateY(-12px); }
     100% { transform: translateY(0px); }
-}
-
-  .login-card-icon { font-size: 22px; margin-bottom: 8px; }
-  .login-card-label { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
-  .login-card-value { font-family: 'Playfair Display', serif; font-size: 24px; color: #fff; }
-  .login-card.accent .login-card-value { color: #e8a838; }
+  }
 
   .login-right {
     width: 460px;
@@ -122,7 +99,7 @@ const styles = `
   .login-subtitle {
     color: #8a7a65;
     font-size: 14px;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
   }
 
   .login-field { margin-bottom: 20px; }
@@ -162,6 +139,16 @@ const styles = `
     margin-bottom: 20px;
   }
 
+  .login-info {
+    background: #fff4d6;
+    border: 1px solid #e8a838;
+    color: #6b4f15;
+    padding: 11px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
   .login-btn {
     width: 100%;
     padding: 14px;
@@ -180,28 +167,81 @@ const styles = `
   .login-btn:hover { background: #2c4a2e; }
   .login-btn:active { transform: scale(0.99); }
   .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .login-forgot {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .login-forgot a {
+    color: #3d6b45;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .login-forgot a:hover { text-decoration: underline; }
 `
 
+const dashboardFor = (role) => {
+    if (role === 'admin')  return '/admin/dashboard'
+    if (role === 'staff')  return '/staff/dashboard'
+    if (role === 'parent') return '/parent/dashboard'
+    return '/login'
+}
+
 export default function Login() {
-    const [form, setForm]       = useState({ email: '', password: '' })
-    const [error, setError]     = useState('')
+    const navigate = useNavigate()
+    const location = useLocation()
+    const [searchParams] = useSearchParams()
+    const { login, isAuthenticated, user, mustChangePassword } = useAuth()
+
+    const [form, setForm]     = useState({ email: '', password: '' })
+    const [error, setError]   = useState('')
+    const [info, setInfo]     = useState('')
     const [loading, setLoading] = useState(false)
+
+    // Banner if redirected here from an expired/invalid session
+    useEffect(() => {
+        if (searchParams.get('expired') === '1') {
+            setInfo('Your session has expired. Please sign in again.')
+        }
+    }, [searchParams])
+
+    // If already logged in, send to the right place
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            if (mustChangePassword) navigate('/change-password', { replace: true })
+            else navigate(dashboardFor(user.role), { replace: true })
+        }
+    }, [isAuthenticated, user, mustChangePassword, navigate])
 
     const handleLogin = async () => {
         setError('')
+        setInfo('')
+        if (!form.email || !form.password) {
+            setError('Email and password are required')
+            return
+        }
+
         setLoading(true)
-        try {
-            const res = await api.post('/auth/login', form)
-            const { token, user } = res.data.data
-            localStorage.setItem('token', token)
-            localStorage.setItem('user', JSON.stringify(user))
-            if (user.role === 'admin')  window.location.href = '/admin/dashboard'
-            if (user.role === 'staff')  window.location.href = '/staff/dashboard'
-            if (user.role === 'parent') window.location.href = '/parent/dashboard'
-        } catch (err) {
-            setError(err.response?.data?.message || 'Login failed')
-        } finally {
-            setLoading(false)
+        const result = await login(form.email.trim(), form.password)
+        setLoading(false)
+
+        if (!result.ok) {
+            setError(result.message)
+            return
+        }
+
+        // Honor "from" if user was redirected here from a protected route
+        const from = location.state?.from?.pathname
+
+        if (result.mustChangePassword) {
+            navigate('/change-password', { replace: true })
+        } else if (from && from !== '/login') {
+            navigate(from, { replace: true })
+        } else {
+            navigate(dashboardFor(result.user.role), { replace: true })
         }
     }
 
@@ -214,17 +254,17 @@ export default function Login() {
                 <div className="login-left">
                     <div className="login-brand">Camp<span>Mondo</span></div>
                     <div className="login-tagline">Summer Camp Management</div>
-                    <div style={{marginTop: '48px', width: '420px', textAlign: 'center'}}>
-                      <img
-                          src="/camping.svg"
-                          alt="Camp illustration"
-                          style={{
-                              width: '100%',
-                              maxWidth: '420px',
-                              animation: 'float 3s ease-in-out infinite'
-                          }}
-                      />
-                  </div>
+                    <div style={{ marginTop: '48px', width: '420px', textAlign: 'center' }}>
+                        <img
+                            src="/camping.svg"
+                            alt="Camp illustration"
+                            style={{
+                                width: '100%',
+                                maxWidth: '420px',
+                                animation: 'float 3s ease-in-out infinite'
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <div className="login-right">
@@ -232,6 +272,7 @@ export default function Login() {
                     <div className="login-title">Sign in to CampMondo</div>
                     <div className="login-subtitle">Manage your camp from one place</div>
 
+                    {info  && <div className="login-info">ℹ {info}</div>}
                     {error && <div className="login-error">⚠ {error}</div>}
 
                     <div className="login-field">
@@ -241,8 +282,9 @@ export default function Login() {
                             type="email"
                             placeholder="you@example.com"
                             value={form.email}
-                            onChange={e => setForm({...form, email: e.target.value})}
+                            onChange={e => setForm({ ...form, email: e.target.value })}
                             onKeyDown={handleKey}
+                            autoComplete="email"
                         />
                     </div>
 
@@ -253,14 +295,19 @@ export default function Login() {
                             type="password"
                             placeholder="••••••••"
                             value={form.password}
-                            onChange={e => setForm({...form, password: e.target.value})}
+                            onChange={e => setForm({ ...form, password: e.target.value })}
                             onKeyDown={handleKey}
+                            autoComplete="current-password"
                         />
                     </div>
 
                     <button className="login-btn" onClick={handleLogin} disabled={loading}>
                         {loading ? 'Signing in...' : 'Sign In →'}
                     </button>
+
+                    <div className="login-forgot">
+                        <Link to="/forgot-password">Forgot your password?</Link>
+                    </div>
                 </div>
             </div>
         </>

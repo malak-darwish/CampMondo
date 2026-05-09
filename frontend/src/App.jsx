@@ -1,4 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+
+// Auth pages
+import Login from './pages/Login'
+import ChangePassword from './pages/ChangePassword'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -8,27 +16,55 @@ import ManageStaff from './pages/admin/ManageStaff'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements'
 import Reports from './pages/admin/Reports'
 
-// Shared
-import Login from './pages/Login'
-
 export default function App() {
     return (
-        <BrowserRouter>
-            <Routes>
-                {/* Default route */}
-                <Route path='/' element={<Navigate to='/login' />} />
+        <AuthProvider>
+            <BrowserRouter>
+                <Routes>
+                    {/* Default route */}
+                    <Route path='/' element={<Navigate to='/login' replace />} />
 
-                {/* Auth */}
-                <Route path='/login' element={<Login />} />
+                    {/* Public auth routes */}
+                    <Route path='/login'           element={<Login />} />
+                    <Route path='/forgot-password' element={<ForgotPassword />} />
+                    <Route path='/reset-password'  element={<ResetPassword />} />
 
-                {/* Admin routes */}
-                <Route path='/admin/dashboard'      element={<AdminDashboard />} />
-                <Route path='/admin/sessions'        element={<ManageSessions />} />
-                <Route path='/admin/groups'          element={<ManageGroups />} />
-                <Route path='/admin/staff'           element={<ManageStaff />} />
-                <Route path='/admin/announcements'   element={<AdminAnnouncements />} />
-                <Route path='/admin/reports'         element={<Reports />} />
-            </Routes>
-        </BrowserRouter>
+                    {/* Change-password is auth-required but role-agnostic.
+                        ProtectedRoute will route the user here automatically when
+                        must_change_password is true. */}
+                    <Route
+                        path='/change-password'
+                        element={
+                            <ProtectedRoute>
+                                <ChangePassword />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Admin routes — guarded */}
+                    <Route path='/admin/dashboard' element={
+                        <ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/sessions' element={
+                        <ProtectedRoute roles={['admin']}><ManageSessions /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/groups' element={
+                        <ProtectedRoute roles={['admin']}><ManageGroups /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/staff' element={
+                        <ProtectedRoute roles={['admin']}><ManageStaff /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/announcements' element={
+                        <ProtectedRoute roles={['admin']}><AdminAnnouncements /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/reports' element={
+                        <ProtectedRoute roles={['admin']}><Reports /></ProtectedRoute>
+                    } />
+
+                    {/* Catch-all */}
+                    <Route path='*' element={<Navigate to='/login' replace />} />
+                </Routes>
+            </BrowserRouter>
+        </AuthProvider>
     )
 }
