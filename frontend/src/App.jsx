@@ -15,6 +15,7 @@ import ManageGroups from './pages/admin/ManageGroups'
 import ManageStaff from './pages/admin/ManageStaff'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements'
 import Reports from './pages/admin/Reports'
+import AIAssistant from './pages/admin/AIAssistant'
 
 export default function App() {
     return (
@@ -59,6 +60,11 @@ export default function App() {
                     } />
                     <Route path='/admin/reports' element={
                         <ProtectedRoute roles={['admin']}><Reports /></ProtectedRoute>
+                    } />
+                    <Route path='/admin/assistant' element={
+                        <ProtectedRoute roles={['admin']}>
+                            <AIAssistant />
+                        </ProtectedRoute>
                     } />
 
                     {/* Catch-all */}

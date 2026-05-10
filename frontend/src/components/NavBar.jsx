@@ -114,6 +114,7 @@ const adminLinks = [
     { href: '/admin/staff',         label: 'Staff' },
     { href: '/admin/announcements', label: 'Announcements' },
     { href: '/admin/reports',       label: 'Reports' },
+    { href: '/admin/assistant', label: 'AI Assistant' },
 ]
 
 const staffLinks = [
