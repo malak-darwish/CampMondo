@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-
-export default function ProtectedRoute({ allowedRoles, children }) {
-  const { isAuthenticated, role } = useAuth();
-
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(role)) return <Navigate to="/login" replace />;
-
-  return children;
-}
-=======
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -52,4 +39,4 @@ export default function ProtectedRoute({ children, roles }) {
 
     return children
 }
->>>>>>> origin/malak
+
