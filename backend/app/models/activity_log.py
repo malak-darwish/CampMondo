@@ -14,6 +14,11 @@ class ActivityLog(db.Model):
     description      = db.Column(db.Text, nullable=False)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
 
+    group = db.relationship(
+        'Group',
+        back_populates='activity_logs'
+    )
+
     def to_dict(self):
         return {
             'id':               self.id,
@@ -24,8 +29,12 @@ class ActivityLog(db.Model):
             'duration_minutes': self.duration_minutes,
             'description':      self.description,
             'created_at':       str(self.created_at),
+<<<<<<< ours
 <<<<<<< HEAD
         }
 =======
         }
 >>>>>>> 936b760 (Merge staff dashboard with parent portal project)
+=======
+        }
+>>>>>>> theirs
