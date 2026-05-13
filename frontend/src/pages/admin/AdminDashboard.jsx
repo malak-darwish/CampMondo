@@ -180,7 +180,7 @@ const styles = `
 `
 
 export default function AdminDashboard() {
-    const [stats, setStats]       = useState({ sessions: 0, staff: 0, payments: 0 })
+    const [stats, setStats]       = useState({ sessions: 0, staff: 0, payments: 0, groups: 0 })
     const [sessions, setSessions] = useState([])
     const [staffList, setStaff]   = useState([])
     const [loading, setLoading]   = useState(true)
@@ -191,19 +191,32 @@ export default function AdminDashboard() {
     const dateStr  = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
     useEffect(() => {
-        Promise.all([
-            api.get('/admin/sessions'),
-            api.get('/admin/staff'),
-            api.get('/admin/payments'),
-        ]).then(([s, st, p]) => {
-            setSessions(s.data.data || [])
+        async function loadDashboard() {
+            const [s, st, p] = await Promise.all([
+                api.get('/admin/sessions'),
+                api.get('/admin/staff'),
+                api.get('/admin/payments'),
+            ])
+
+            const sessionList = s.data.data || []
+            const groupResponses = await Promise.all(
+                sessionList.map((session) => api.get(`/admin/sessions/${session.id}/groups`))
+            )
+            const groupCount = groupResponses.reduce((count, response) => (
+                count + (response.data.data?.length || 0)
+            ), 0)
+
+            setSessions(sessionList)
             setStaff(st.data.data || [])
             setStats({
-                sessions: s.data.data?.length || 0,
+                sessions: sessionList.length,
                 staff:    st.data.data?.length || 0,
                 payments: p.data.data?.length || 0,
+                groups:   groupCount,
             })
-        }).catch(() => {}).finally(() => setLoading(false))
+        }
+
+        loadDashboard().catch(() => {}).finally(() => setLoading(false))
     }, [])
 
     if (loading) return (
@@ -246,7 +259,7 @@ export default function AdminDashboard() {
                         <div className="stat-card">
                             <div className="stat-icon">📋</div>
                             <div className="stat-label">Active Groups</div>
-                            <div className="stat-value">—</div>
+                            <div className="stat-value">{stats.groups}</div>
                         </div>
                     </div>
 

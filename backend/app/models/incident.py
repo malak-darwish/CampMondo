@@ -15,6 +15,9 @@ class IncidentReport(db.Model):
     action_taken  = db.Column(db.Text, nullable=True)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
+    session = db.relationship('Session', backref='incident_reports', lazy=True)
+    camper = db.relationship('Camper', backref='incident_reports', lazy=True)
+
     def to_dict(self):
         return {
             'id':            self.id,

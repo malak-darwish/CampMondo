@@ -14,6 +14,10 @@ const styles = `
   .btn { padding: 10px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.15s; }
   .btn-secondary { background: transparent; border: 1.5px solid #c8b89a; color: #5a4a35; }
   .btn-secondary:hover { border-color: #8a7a65; }
+  .btn-success { background: #2e7d32; color: #fff; }
+  .btn-success:hover { background: #256528; }
+  .btn-danger { background: #c62828; color: #fff; }
+  .btn-danger:hover { background: #a61f1f; }
   .btn-sm { padding: 6px 13px; font-size: 12px; }
 
   .tabs {
@@ -109,6 +113,7 @@ const styles = `
   .badge-green { background: #e8f5e9; color: #2e7d32; }
   .badge-amber { background: #fef3e2; color: #b45309; }
   .badge-red { background: #fdecea; color: #c62828; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
   .empty-state { padding: 56px; text-align: center; color: #a08c72; }
   .empty-icon { font-size: 38px; margin-bottom: 12px; }
@@ -120,9 +125,14 @@ export default function Reports() {
     const [payments, setPayments] = useState([])
     const [incidents, setIncidents] = useState([])
     const [filters, setFilters]   = useState({ status: '', date: '' })
+    const [busyPaymentId, setBusyPaymentId] = useState(null)
+
+    const loadPayments = () => {
+        api.get('/admin/payments').then(r => setPayments(r.data.data || []))
+    }
 
     useEffect(() => {
-        api.get('/admin/payments').then(r => setPayments(r.data.data || []))
+        loadPayments()
         api.get('/admin/incidents').then(r => setIncidents(r.data.data || []))
     }, [])
 
@@ -143,6 +153,16 @@ export default function Reports() {
         if (status === 'confirmed') return <span className="badge badge-green">Confirmed</span>
         if (status === 'pending')   return <span className="badge badge-amber">Pending</span>
         return <span className="badge badge-red">Failed</span>
+    }
+
+    const updatePaymentStatus = async (paymentId, status) => {
+        setBusyPaymentId(paymentId)
+        try {
+            await api.put(`/admin/payments/${paymentId}/status`, { status })
+            loadPayments()
+        } finally {
+            setBusyPaymentId(null)
+        }
     }
 
     const f = (key, val) => setFilters(prev => ({...prev, [key]: val}))
@@ -214,6 +234,7 @@ export default function Reports() {
                                                 <th>Amount</th>
                                                 <th>Status</th>
                                                 <th>Date</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -225,6 +246,28 @@ export default function Reports() {
                                                     <td><strong>${parseFloat(p.amount).toFixed(2)}</strong></td>
                                                     <td>{paymentBadge(p.status)}</td>
                                                     <td>{p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : '—'}</td>
+                                                    <td>
+                                                        {p.status === 'pending' ? (
+                                                            <div className="actions">
+                                                                <button
+                                                                    className="btn btn-success btn-sm"
+                                                                    disabled={busyPaymentId === p.id}
+                                                                    onClick={() => updatePaymentStatus(p.id, 'confirmed')}
+                                                                >
+                                                                    Approve
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-danger btn-sm"
+                                                                    disabled={busyPaymentId === p.id}
+                                                                    onClick={() => updatePaymentStatus(p.id, 'failed')}
+                                                                >
+                                                                    Fail
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{color:'#a08c72'}}>No action</span>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -261,7 +304,9 @@ export default function Reports() {
                                             <tr>
                                                 <th>Date</th>
                                                 <th>Time</th>
-                                                <th>Camper ID</th>
+                                                <th>Camper</th>
+                                                <th>Session</th>
+                                                <th>Reported By</th>
                                                 <th>Description</th>
                                                 <th>Action Taken</th>
                                             </tr>
@@ -273,7 +318,9 @@ export default function Reports() {
                                                     <tr key={i.id}>
                                                         <td>{i.incident_date}</td>
                                                         <td>{i.incident_time}</td>
-                                                        <td>#{i.camper_id}</td>
+                                                        <td>{i.camper_name || `#${i.camper_id}`}</td>
+                                                        <td>{i.session_name || `#${i.session_id}`}</td>
+                                                        <td>{i.reported_by_name || `#${i.reported_by}`}</td>
                                                         <td style={{maxWidth:'280px'}}>{i.description}</td>
                                                         <td>{i.action_taken || <span style={{color:'#c8b89a'}}>—</span>}</td>
                                                     </tr>

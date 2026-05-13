@@ -13,6 +13,8 @@ class Enrollment(db.Model):
     enrolled_at  = db.Column(db.DateTime, default=datetime.utcnow)
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
+    session = db.relationship('Session', backref='enrollments', lazy=True)
+
     activities = db.relationship('EnrollmentActivity', backref='enrollment', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -58,4 +60,6 @@ class Document(db.Model):
             'document_type': self.document_type,
             'file_path':     self.file_path,
             'uploaded_at':   str(self.uploaded_at),
+
         }
+

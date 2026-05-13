@@ -4,12 +4,13 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
 
   .navbar {
-    height: 62px;
+    min-height: 62px;
     background: #2c4a2e;
     display: flex;
     align-items: center;
     padding: 0 36px;
     justify-content: space-between;
+    gap: 18px;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -29,8 +30,11 @@ const styles = `
   .navbar-links {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 2px;
     list-style: none;
+    min-width: 0;
   }
 
   .navbar-links a {
@@ -43,6 +47,7 @@ const styles = `
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     transition: all 0.15s;
+    white-space: nowrap;
   }
 
   .navbar-links a:hover { color: #fff; background: rgba(255,255,255,0.07); }
@@ -52,6 +57,7 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
   }
 
   .navbar-user {
@@ -105,6 +111,23 @@ const styles = `
   }
 
   .navbar-logout:hover { background: rgba(220,60,60,0.15); border-color: rgba(220,60,60,0.3); color: #ff7070; }
+
+  @media (max-width: 980px) {
+    .navbar {
+      align-items: flex-start;
+      flex-direction: column;
+      padding: 14px 20px;
+    }
+
+    .navbar-links {
+      justify-content: flex-start;
+    }
+
+    .navbar-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
 `
 
 const adminLinks = [
@@ -121,11 +144,12 @@ const staffLinks = [
     { href: '/staff/dashboard',  label: 'Dashboard' },
     { href: '/staff/attendance', label: 'Attendance' },
     { href: '/staff/incidents',  label: 'Incidents' },
-    { href: '/staff/activity',   label: 'Activity Log' },
+    { href: '/staff/activity-log', label: 'Activity Log' },
 ]
 
 const parentLinks = [
     { href: '/parent/dashboard',     label: 'Dashboard' },
+    { href: '/parent/sessions',      label: 'Sessions' },
     { href: '/parent/register',      label: 'Register Camper' },
     { href: '/parent/payments',      label: 'Payments' },
     { href: '/parent/announcements', label: 'Announcements' },

@@ -9,9 +9,12 @@ class Group(db.Model):
     name       = db.Column(db.String(100), nullable=False)
     staff_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-
-    attendance_logs = db.relationship('AttendanceLog', backref='group', lazy=True)
-    activity_logs   = db.relationship('ActivityLog',   backref='group', lazy=True)
+    attendance_logs = db.relationship(
+    'AttendanceLog',
+    back_populates='group',
+    lazy=True
+    )
+    activity_logs   = db.relationship('ActivityLog',   back_populates='group', lazy=True)
 
     def to_dict(self):
         return {

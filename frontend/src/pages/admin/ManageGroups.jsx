@@ -163,6 +163,7 @@ export default function ManageGroups() {
     const [sessions, setSessions]        = useState([])
     const [selectedSession, setSelected] = useState('')
     const [groups, setGroups]            = useState([])
+    const [enrollments, setEnrollments]  = useState([])
     const [staffList, setStaffList]      = useState([])
     const [groupName, setGroupName]      = useState('')
     const [error, setError]              = useState('')
@@ -176,13 +177,17 @@ export default function ManageGroups() {
 
     const loadGroups = (sessionId) => {
         api.get(`/admin/sessions/${sessionId}/groups`).then(r => setGroups(r.data.data || []))
+        api.get(`/admin/sessions/${sessionId}/enrollments`).then(r => setEnrollments(r.data.data || []))
     }
 
     const handleSessionChange = (e) => {
         setSelected(e.target.value)
         setError(''); setSuccess('')
         if (e.target.value) loadGroups(e.target.value)
-        else setGroups([])
+        else {
+            setGroups([])
+            setEnrollments([])
+        }
     }
 
     const handleCreateGroup = async () => {
@@ -212,10 +217,23 @@ export default function ManageGroups() {
         }
     }
 
+    const handleAssignCamper = async (groupId, camperId) => {
+        setError(''); setSuccess('')
+        try {
+            await api.put(`/admin/groups/${groupId}/assign-camper`, { camper_id: parseInt(camperId) })
+            setSuccess('Camper assigned successfully')
+            loadGroups(selectedSession)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error assigning camper')
+        }
+    }
+
     const getStaffName = (staffId) => {
         const s = staffList.find(s => s.id === staffId)
         return s ? s.full_name : null
     }
+
+    const campersForGroup = (groupId) => enrollments.filter(e => e.group_id === groupId)
 
     return (
         <>
@@ -297,6 +315,27 @@ export default function ManageGroups() {
                                                                 ))}
                                                             </select>
                                                         )}
+                                                    </div>
+                                                    <div className="group-staff-row" style={{marginTop:'12px'}}>
+                                                        <div className="staff-label">Campers</div>
+                                                        <select
+                                                            className="staff-select"
+                                                            defaultValue=''
+                                                            onChange={e => e.target.value && handleAssignCamper(g.id, e.target.value)}
+                                                        >
+                                                            <option value=''>Assign enrolled camper...</option>
+                                                            {enrollments.map(e => (
+                                                                <option key={e.id} value={e.camper_id}>
+                                                                    {e.camper_name || `Camper #${e.camper_id}`}
+                                                                    {e.group_id ? ` (currently group #${e.group_id})` : ' (unassigned)'}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{fontSize:'12px', color:'#8a7a65', marginTop:'8px'}}>
+                                                        {campersForGroup(g.id).length === 0
+                                                            ? 'No campers assigned to this group yet.'
+                                                            : `Assigned campers: ${campersForGroup(g.id).map(e => e.camper_name || `#${e.camper_id}`).join(', ')}`}
                                                     </div>
                                                 </div>
                                             )

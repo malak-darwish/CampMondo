@@ -23,6 +23,29 @@ def ok(data=None, message='Success', status=200):
     return jsonify({'success': True, 'data': data, 'message': message}), status
 
 
+def payment_details(payment):
+    data = payment.to_dict()
+    enrollment = payment.enrollment
+    camper = enrollment.camper if enrollment else None
+    session = enrollment.session if enrollment else None
+    data['camper_id'] = camper.id if camper else None
+    data['camper_name'] = camper.full_name if camper else None
+    data['session_id'] = session.id if session else None
+    data['session_name'] = session.name if session else None
+    return data
+
+
+def incident_details(incident):
+    data = incident.to_dict()
+    camper = incident.camper if getattr(incident, 'camper', None) else None
+    reporter = User.query.get(incident.reported_by)
+    session = incident.session if getattr(incident, 'session', None) else None
+    data['camper_name'] = camper.full_name if camper else None
+    data['reported_by_name'] = reporter.full_name if reporter else None
+    data['session_name'] = session.name if session else None
+    return data
+
+
 # ═══════════════════════════════════════════════════════════
 #  SESSIONS
 # ═══════════════════════════════════════════════════════════
@@ -119,6 +142,19 @@ def delete_session(session_id):
 def get_groups(session_id):
     groups = Group.query.filter_by(session_id=session_id).all()
     return ok([g.to_dict() for g in groups])
+
+
+@admin_bp.get('/sessions/<int:session_id>/enrollments')
+@role_required('admin')
+def get_session_enrollments(session_id):
+    from app.models.enrollment import Enrollment
+    enrollments = Enrollment.query.filter_by(session_id=session_id, status='active').all()
+    data = []
+    for enrollment in enrollments:
+        item = enrollment.to_dict()
+        item['camper_name'] = enrollment.camper.full_name if enrollment.camper else None
+        data.append(item)
+    return ok(data)
 
 
 @admin_bp.post('/sessions/<int:session_id>/groups')
@@ -267,7 +303,7 @@ def get_payments():
         query = query.filter_by(status=status)
 
     payments = query.order_by(Payment.submitted_at.desc()).all()
-    return ok([p.to_dict() for p in payments])
+    return ok([payment_details(p) for p in payments])
 
 
 @admin_bp.put('/payments/<int:payment_id>/status')
@@ -289,7 +325,7 @@ def update_payment_status(payment_id):
         payment.confirmed_at = datetime.utcnow()
 
     db.session.commit()
-    return ok(payment.to_dict(), 'Payment status updated')
+    return ok(payment_details(payment), 'Payment status updated')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -344,5 +380,4 @@ def get_incidents():
         query = query.filter_by(incident_date=date)
 
     incidents = query.order_by(IncidentReport.incident_date.desc()).all()
-    return ok([i.to_dict() for i in incidents])
-
+    return ok([incident_details(i) for i in incidents])

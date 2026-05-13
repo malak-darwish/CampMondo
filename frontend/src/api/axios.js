@@ -26,7 +26,9 @@ api.interceptors.response.use(
             url.includes('/auth/forgot-password') ||
             url.includes('/auth/reset-password')
 
-        if (status === 401 && !isAuthEndpoint) {
+        const isNetworkAuthFailure = !err.response && err.code === 'ERR_NETWORK'
+
+        if ((status === 401 || status === 422 || isNetworkAuthFailure) && !isAuthEndpoint) {
             localStorage.removeItem('token')
             localStorage.removeItem('user')
             localStorage.removeItem('must_change_password')
@@ -40,4 +42,3 @@ api.interceptors.response.use(
 )
 
 export default api
-

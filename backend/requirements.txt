@@ -7,3 +7,5 @@ pymysql
 bcrypt
 reportlab
 python-dotenv
+langchain-groq
+langchain-core

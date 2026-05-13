@@ -1,0 +1,317 @@
+import { useEffect, useMemo, useState } from 'react'
+import Navbar from '../../components/Navbar'
+import api from '../../api/axios'
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .page-root {
+    min-height: 100vh;
+    background: #f5f0e8;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .page-body {
+    width: min(1120px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 40px 0;
+  }
+
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 34px;
+    color: #2c1810;
+    margin-bottom: 6px;
+  }
+
+  .page-subtitle {
+    color: #8a7a65;
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .message {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c7e8c9;
+  }
+
+  .message.error {
+    background: #fdecea;
+    color: #c62828;
+    border: 1px solid #f5c6c6;
+  }
+
+  .sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .session-card {
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .session-top {
+    padding: 20px 22px;
+    border-bottom: 1px solid #f0e8d8;
+  }
+
+  .session-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c1810;
+    margin-bottom: 6px;
+  }
+
+  .session-dates,
+  .session-meta {
+    color: #8a7a65;
+    font-size: 13px;
+  }
+
+  .session-body { padding: 18px 22px 22px; }
+
+  .activity-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+
+  .activity-pill {
+    border-radius: 999px;
+    background: #f0e8d8;
+    color: #5a4a35;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .enroll-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .form-select {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 8px;
+    background: #fff;
+    color: #2c1810;
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .form-select:focus { border-color: #3d6b45; }
+
+  .primary-btn {
+    min-height: 40px;
+    padding: 0 16px;
+    background: #3d6b45;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .primary-btn:hover { background: #2c4a2e; }
+  .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .status {
+    display: inline-flex;
+    margin-top: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .status.full {
+    background: #fdecea;
+    color: #c62828;
+  }
+
+  .empty-state,
+  .loading {
+    background: #fff9f0;
+    border: 1px solid #e8d5b5;
+    border-radius: 14px;
+    padding: 26px;
+    color: #8a7a65;
+    font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    .page-body {
+      width: min(100% - 32px, 1120px);
+      padding: 28px 0;
+    }
+    .sessions-grid { grid-template-columns: 1fr; }
+    .enroll-row { grid-template-columns: 1fr; }
+  }
+`
+
+export default function Sessions() {
+    const [sessions, setSessions] = useState([])
+    const [campers, setCampers] = useState([])
+    const [selectedCampers, setSelectedCampers] = useState({})
+    const [loading, setLoading] = useState(true)
+    const [savingSessionId, setSavingSessionId] = useState(null)
+    const [message, setMessage] = useState('')
+    const [error, setError] = useState('')
+
+    async function load() {
+        const [sessionsRes, campersRes] = await Promise.all([
+            api.get('/parent/sessions'),
+            api.get('/parent/campers'),
+        ])
+        setSessions(sessionsRes.data.data || [])
+        setCampers(campersRes.data.data || [])
+    }
+
+    useEffect(() => {
+        load()
+            .catch((err) => setError(err.response?.data?.message || 'Could not load sessions'))
+            .finally(() => setLoading(false))
+    }, [])
+
+    const camperById = useMemo(() => {
+        return campers.reduce((map, camper) => {
+            map[String(camper.id)] = camper
+            return map
+        }, {})
+    }, [campers])
+
+    async function enroll(sessionId) {
+        const camperId = selectedCampers[sessionId]
+        setMessage('')
+        setError('')
+
+        if (!camperId) {
+            setError('Choose a camper before enrolling')
+            return
+        }
+
+        setSavingSessionId(sessionId)
+        try {
+            const res = await api.post('/parent/enrollments', {
+                camper_id: camperId,
+                session_id: sessionId,
+            })
+            const camperName = camperById[String(camperId)]?.full_name || 'Camper'
+            setMessage(`${camperName} enrolled successfully.`)
+            await load()
+            setSelectedCampers((prev) => ({ ...prev, [sessionId]: '' }))
+            return res
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not enroll camper')
+        } finally {
+            setSavingSessionId(null)
+        }
+    }
+
+    return (
+        <>
+            <style>{styles}</style>
+            <div className="page-root">
+                <Navbar />
+                <main className="page-body">
+                    <h1 className="page-title">Available Sessions</h1>
+                    <p className="page-subtitle">Review camp sessions and enroll one of your registered campers.</p>
+
+                    {message && <div className="message success">{message}</div>}
+                    {error && <div className="message error">{error}</div>}
+
+                    {loading ? (
+                        <div className="loading">Loading sessions...</div>
+                    ) : sessions.length === 0 ? (
+                        <div className="empty-state">No sessions are available yet.</div>
+                    ) : (
+                        <div className="sessions-grid">
+                            {sessions.map((session) => {
+                                const enrolledNames = (session.enrolled_camper_ids || [])
+                                    .map((id) => camperById[String(id)]?.full_name)
+                                    .filter(Boolean)
+
+                                return (
+                                    <article key={session.id} className="session-card">
+                                        <div className="session-top">
+                                            <div className="session-name">{session.name}</div>
+                                            <div className="session-dates">{session.start_date} to {session.end_date}</div>
+                                            <div className="session-meta">
+                                                ${session.enrollment_fee} enrollment fee | {session.spots_left} spots left
+                                            </div>
+                                        </div>
+                                        <div className="session-body">
+                                            <div className="activity-list">
+                                                {(session.activities || []).length === 0
+                                                    ? <span className="activity-pill">No activities listed</span>
+                                                    : session.activities.map((activity) => (
+                                                        <span key={activity.id} className="activity-pill">
+                                                            {activity.name} (${activity.fee})
+                                                        </span>
+                                                    ))}
+                                            </div>
+
+                                            {enrolledNames.length > 0 && (
+                                                <div className="status">Enrolled: {enrolledNames.join(', ')}</div>
+                                            )}
+
+                                            {session.is_full ? (
+                                                <div className="status full">Session full</div>
+                                            ) : (
+                                                <div className="enroll-row">
+                                                    <select
+                                                        className="form-select"
+                                                        value={selectedCampers[session.id] || ''}
+                                                        onChange={(e) => setSelectedCampers({ ...selectedCampers, [session.id]: e.target.value })}
+                                                        disabled={campers.length === 0}
+                                                    >
+                                                        <option value="">{campers.length === 0 ? 'Register a camper first' : 'Choose camper'}</option>
+                                                        {campers.map((camper) => (
+                                                            <option key={camper.id} value={camper.id}>{camper.full_name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        className="primary-btn"
+                                                        onClick={() => enroll(session.id)}
+                                                        disabled={campers.length === 0 || savingSessionId === session.id}
+                                                    >
+                                                        {savingSessionId === session.id ? 'Enrolling...' : 'Enroll'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </article>
+                                )
+                            })}
+                        </div>
+                    )}
+                </main>
+            </div>
+        </>
+    )
+}

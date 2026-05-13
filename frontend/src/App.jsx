@@ -8,6 +8,13 @@ import ChangePassword from './pages/ChangePassword'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 
+// Parent pages
+import ParentDashboard from './pages/parents/ParentDashboard'
+import Sessions from './pages/parents/Sessions'
+import RegisterCamper from './pages/parents/RegisterCamper'
+import Payments from './pages/parents/Payments'
+import Announcements from './pages/parents/Announcements'
+
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManageSessions from './pages/admin/ManageSessions'
@@ -16,6 +23,12 @@ import ManageStaff from './pages/admin/ManageStaff'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements'
 import Reports from './pages/admin/Reports'
 import AIAssistant from './pages/admin/AIAssistant'
+
+// Staff pages
+import StaffDashboard from './pages/staff/StaffDashboard'
+import Attendance from './pages/staff/Attendance'
+import IncidentReport from './pages/staff/IncidentReport'
+import ActivityLog from './pages/staff/ActivityLog'
 
 export default function App() {
     return (
@@ -67,6 +80,46 @@ export default function App() {
                         </ProtectedRoute>
                     } />
 
+                    {/* Staff routes - guarded */}
+                    <Route path='/staff/dashboard' element={
+                        <ProtectedRoute roles={['staff']}><StaffDashboard /></ProtectedRoute>
+                    } />
+                    <Route path='/staff/attendance' element={
+                        <ProtectedRoute roles={['staff']}><Attendance /></ProtectedRoute>
+                    } />
+                    <Route path='/staff/incidents' element={
+                        <ProtectedRoute roles={['staff']}><IncidentReport /></ProtectedRoute>
+                    } />
+                    <Route path='/staff/activity-log' element={
+                        <ProtectedRoute roles={['staff']}><ActivityLog /></ProtectedRoute>
+                    } />
+                    <Route path='/staff/activity' element={
+                        <Navigate to='/staff/activity-log' replace />
+                    } />
+
+                    {/* Parent routes - guarded */}
+                    <Route path='/parent' element={
+                        <ProtectedRoute roles={['parent']}><Navigate to='/parent/dashboard' replace /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/dashboard' element={
+                        <ProtectedRoute roles={['parent']}><ParentDashboard /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/sessions' element={
+                        <ProtectedRoute roles={['parent']}><Sessions /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/register-camper' element={
+                        <ProtectedRoute roles={['parent']}><RegisterCamper /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/register' element={
+                        <ProtectedRoute roles={['parent']}><RegisterCamper /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/payments' element={
+                        <ProtectedRoute roles={['parent']}><Payments /></ProtectedRoute>
+                    } />
+                    <Route path='/parent/announcements' element={
+                        <ProtectedRoute roles={['parent']}><Announcements /></ProtectedRoute>
+                    } />
+
                     {/* Catch-all */}
                     <Route path='*' element={<Navigate to='/login' replace />} />
                 </Routes>
@@ -74,4 +127,3 @@ export default function App() {
         </AuthProvider>
     )
 }
-

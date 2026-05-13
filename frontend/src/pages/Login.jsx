@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/axios'
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap');
@@ -49,7 +50,6 @@ const styles = `
     font-family: 'Playfair Display', serif;
     font-size: 52px;
     color: #fff;
-    letter-spacing: -1px;
     margin-bottom: 8px;
   }
 
@@ -77,6 +77,7 @@ const styles = `
     flex-direction: column;
     justify-content: center;
     padding: 72px 56px;
+    overflow-y: auto;
   }
 
   .login-welcome {
@@ -181,11 +182,36 @@ const styles = `
   }
 
   .login-forgot a:hover { text-decoration: underline; }
+
+  .login-switch {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #6f604d;
+  }
+
+  .login-switch button {
+    background: none;
+    border: none;
+    color: #3d6b45;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .login-switch button:hover { text-decoration: underline; }
+
+  @media (max-width: 860px) {
+    .login-root { flex-direction: column; }
+    .login-left { min-height: 260px; padding: 36px 24px; }
+    .login-right { width: 100%; padding: 40px 28px; }
+  }
 `
 
 const dashboardFor = (role) => {
-    if (role === 'admin')  return '/admin/dashboard'
-    if (role === 'staff')  return '/staff/dashboard'
+    if (role === 'admin') return '/admin/dashboard'
+    if (role === 'staff') return '/staff/dashboard'
     if (role === 'parent') return '/parent/dashboard'
     return '/login'
 }
@@ -196,19 +222,25 @@ export default function Login() {
     const [searchParams] = useSearchParams()
     const { login, isAuthenticated, user, mustChangePassword } = useAuth()
 
-    const [form, setForm]     = useState({ email: '', password: '' })
-    const [error, setError]   = useState('')
-    const [info, setInfo]     = useState('')
+    const [mode, setMode] = useState('login')
+    const [form, setForm] = useState({ email: '', password: '' })
+    const [registerForm, setRegisterForm] = useState({
+        full_name: '',
+        email: '',
+        phone_number: '',
+        password: '',
+        confirm_password: '',
+    })
+    const [error, setError] = useState('')
+    const [info, setInfo] = useState('')
     const [loading, setLoading] = useState(false)
 
-    // Banner if redirected here from an expired/invalid session
     useEffect(() => {
         if (searchParams.get('expired') === '1') {
             setInfo('Your session has expired. Please sign in again.')
         }
     }, [searchParams])
 
-    // If already logged in, send to the right place
     useEffect(() => {
         if (isAuthenticated && user) {
             if (mustChangePassword) navigate('/change-password', { replace: true })
@@ -233,7 +265,6 @@ export default function Login() {
             return
         }
 
-        // Honor "from" if user was redirected here from a protected route
         const from = location.state?.from?.pathname
 
         if (result.mustChangePassword) {
@@ -245,7 +276,57 @@ export default function Login() {
         }
     }
 
-    const handleKey = (e) => { if (e.key === 'Enter') handleLogin() }
+    const handleRegister = async () => {
+        setError('')
+        setInfo('')
+
+        if (!registerForm.full_name || !registerForm.email || !registerForm.password) {
+            setError('Full name, email, and password are required')
+            return
+        }
+
+        if (registerForm.password !== registerForm.confirm_password) {
+            setError('Passwords do not match')
+            return
+        }
+
+        setLoading(true)
+        try {
+            await api.post('/auth/register-parent', {
+                full_name: registerForm.full_name.trim(),
+                email: registerForm.email.trim(),
+                phone_number: registerForm.phone_number.trim(),
+                password: registerForm.password,
+            })
+
+            const result = await login(registerForm.email.trim(), registerForm.password)
+            if (!result.ok) {
+                setMode('login')
+                setForm({ email: registerForm.email.trim(), password: '' })
+                setInfo('Account created. Please sign in.')
+                return
+            }
+
+            navigate(dashboardFor(result.user.role), { replace: true })
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not create parent account')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const switchMode = (nextMode) => {
+        setMode(nextMode)
+        setError('')
+        setInfo('')
+    }
+
+    const handleKey = (e) => {
+        if (e.key === 'Enter') {
+            if (mode === 'register') handleRegister()
+            else handleLogin()
+        }
+    }
 
     return (
         <>
@@ -268,12 +349,29 @@ export default function Login() {
                 </div>
 
                 <div className="login-right">
-                    <div className="login-welcome">Welcome back</div>
-                    <div className="login-title">Sign in to CampMondo</div>
-                    <div className="login-subtitle">Manage your camp from one place</div>
+                    <div className="login-welcome">{mode === 'register' ? 'Parent registration' : 'Welcome back'}</div>
+                    <div className="login-title">{mode === 'register' ? 'Create parent account' : 'Sign in to CampMondo'}</div>
+                    <div className="login-subtitle">
+                        {mode === 'register' ? 'Create your parent access before registering campers' : 'Manage your camp from one place'}
+                    </div>
 
-                    {info  && <div className="login-info">ℹ {info}</div>}
-                    {error && <div className="login-error">⚠ {error}</div>}
+                    {info && <div className="login-info">{info}</div>}
+                    {error && <div className="login-error">{error}</div>}
+
+                    {mode === 'register' && (
+                        <div className="login-field">
+                            <label className="login-label">Full name</label>
+                            <input
+                                className="login-input"
+                                type="text"
+                                placeholder="Parent name"
+                                value={registerForm.full_name}
+                                onChange={e => setRegisterForm({ ...registerForm, full_name: e.target.value })}
+                                onKeyDown={handleKey}
+                                autoComplete="name"
+                            />
+                        </div>
+                    )}
 
                     <div className="login-field">
                         <label className="login-label">Email</label>
@@ -281,36 +379,87 @@ export default function Login() {
                             className="login-input"
                             type="email"
                             placeholder="you@example.com"
-                            value={form.email}
-                            onChange={e => setForm({ ...form, email: e.target.value })}
+                            value={mode === 'register' ? registerForm.email : form.email}
+                            onChange={e => {
+                                if (mode === 'register') setRegisterForm({ ...registerForm, email: e.target.value })
+                                else setForm({ ...form, email: e.target.value })
+                            }}
                             onKeyDown={handleKey}
                             autoComplete="email"
                         />
                     </div>
+
+                    {mode === 'register' && (
+                        <div className="login-field">
+                            <label className="login-label">Phone number</label>
+                            <input
+                                className="login-input"
+                                type="tel"
+                                placeholder="Optional"
+                                value={registerForm.phone_number}
+                                onChange={e => setRegisterForm({ ...registerForm, phone_number: e.target.value })}
+                                onKeyDown={handleKey}
+                                autoComplete="tel"
+                            />
+                        </div>
+                    )}
 
                     <div className="login-field">
                         <label className="login-label">Password</label>
                         <input
                             className="login-input"
                             type="password"
-                            placeholder="••••••••"
-                            value={form.password}
-                            onChange={e => setForm({ ...form, password: e.target.value })}
+                            placeholder="Password"
+                            value={mode === 'register' ? registerForm.password : form.password}
+                            onChange={e => {
+                                if (mode === 'register') setRegisterForm({ ...registerForm, password: e.target.value })
+                                else setForm({ ...form, password: e.target.value })
+                            }}
                             onKeyDown={handleKey}
-                            autoComplete="current-password"
+                            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                         />
                     </div>
 
-                    <button className="login-btn" onClick={handleLogin} disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In →'}
-                    </button>
+                    {mode === 'register' && (
+                        <div className="login-field">
+                            <label className="login-label">Confirm password</label>
+                            <input
+                                className="login-input"
+                                type="password"
+                                placeholder="Confirm password"
+                                value={registerForm.confirm_password}
+                                onChange={e => setRegisterForm({ ...registerForm, confirm_password: e.target.value })}
+                                onKeyDown={handleKey}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                    )}
 
-                    <div className="login-forgot">
-                        <Link to="/forgot-password">Forgot your password?</Link>
+                    {mode === 'register' ? (
+                        <button className="login-btn" onClick={handleRegister} disabled={loading}>
+                            {loading ? 'Creating account...' : 'Create Parent Account'}
+                        </button>
+                    ) : (
+                        <button className="login-btn" onClick={handleLogin} disabled={loading}>
+                            {loading ? 'Signing in...' : 'Sign In'}
+                        </button>
+                    )}
+
+                    {mode === 'login' && (
+                        <div className="login-forgot">
+                            <Link to="/forgot-password">Forgot your password?</Link>
+                        </div>
+                    )}
+
+                    <div className="login-switch">
+                        {mode === 'register' ? (
+                            <>Already have an account? <button onClick={() => switchMode('login')}>Sign in</button></>
+                        ) : (
+                            <>Parent without an account? <button onClick={() => switchMode('register')}>Create one</button></>
+                        )}
                     </div>
                 </div>
             </div>
         </>
     )
 }
-
