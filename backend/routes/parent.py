@@ -8,7 +8,7 @@ from app.models.payment import Payment
 from app.models.session import Session
 from app.models.announcement import Announcement
 from app.utils.auth_helpers import role_required, current_user
-from app.utils.email import send_email
+from app.utils.email import send_email, send_payment_submitted_email
 
 
 parent_bp = Blueprint('parent', __name__)
@@ -289,7 +289,7 @@ def submit_payment():
     )
     db.session.add(payment)
     db.session.commit()
-    send_email(user.email, 'CampMondo payment submitted', f'Payment of ${payment.amount} was submitted and is pending confirmation.')
+    send_payment_submitted_email(user, payment, enrollment)
     return ok(payment_with_camper(payment), 'Payment submitted', 201)
 
 
