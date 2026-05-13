@@ -10,7 +10,11 @@ from app.utils.auth_helpers import (
     hash_password, check_password, is_strong_password,
     current_user, account_is_locked, lock_account
 )
-from app.utils.email import send_password_reset_email, send_account_locked_email
+from app.utils.email import (
+    send_password_reset_email,
+    send_account_locked_email,
+    send_parent_registration_email,
+)
 
 
 
@@ -57,6 +61,7 @@ def register_parent():
     )
     db.session.add(user)
     db.session.commit()
+    send_parent_registration_email(user)
     return ok(user.to_dict(), 'Parent account created', 201)
 
 # ───────────────────────────────────────────────────────────
@@ -277,4 +282,3 @@ def reset_password():
 def logout():
 
     return ok(None, 'Logout successful')
-
