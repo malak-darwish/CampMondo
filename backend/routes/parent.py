@@ -1,0 +1,323 @@
+from datetime import datetime
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from app import db
+from app.models.camper import Camper, EmergencyContact
+from app.models.enrollment import Enrollment
+from app.models.payment import Payment
+from app.models.session import Session
+from app.models.announcement import Announcement
+from app.utils.auth_helpers import role_required, current_user
+from app.utils.email import send_email
+
+
+parent_bp = Blueprint('parent', __name__)
+
+
+def fail(message, status=400):
+    return jsonify({'success': False, 'message': message}), status
+
+
+def ok(data=None, message='Success', status=200):
+    return jsonify({'success': True, 'data': data, 'message': message}), status
+
+
+def camper_with_contact(camper):
+    data = camper.to_dict()
+    contact = camper.emergency_contacts[0] if camper.emergency_contacts else None
+    data['emergency_contact_name'] = contact.contact_name if contact else None
+    data['emergency_contact_phone'] = contact.phone_number if contact else None
+    return data
+
+
+def parent_payment_query(parent_id):
+    return (
+        Payment.query
+        .join(Enrollment, Payment.enrollment_id == Enrollment.id)
+        .join(Camper, Enrollment.camper_id == Camper.id)
+        .filter(Camper.parent_id == parent_id)
+    )
+
+
+def payment_with_camper(payment):
+    data = payment.to_dict()
+    camper = payment.enrollment.camper if payment.enrollment else None
+    session = payment.enrollment.session if payment.enrollment else None
+    data['camper_name'] = camper.full_name if camper else None
+    data['session_name'] = session.name if session else None
+    data['payment_date'] = data.get('submitted_at')
+    data['card_last4'] = None
+    return data
+
+
+def session_with_availability(session, parent_id=None):
+    active_count = Enrollment.query.filter_by(session_id=session.id, status='active').count()
+    data = session.to_dict()
+    data['active_enrollments'] = active_count
+    data['spots_left'] = max(session.max_capacity - active_count, 0)
+    data['is_full'] = active_count >= session.max_capacity
+
+    if parent_id:
+        parent_camper_ids = [
+            c.id for c in Camper.query.filter_by(parent_id=parent_id).all()
+        ]
+        if parent_camper_ids:
+            parent_enrollments = Enrollment.query.filter(
+                Enrollment.session_id == session.id,
+                Enrollment.status == 'active',
+                Enrollment.camper_id.in_(parent_camper_ids)
+            ).all()
+            data['enrolled_camper_ids'] = [e.camper_id for e in parent_enrollments]
+        else:
+            data['enrolled_camper_ids'] = []
+    return data
+
+
+@parent_bp.get('/dashboard')
+@role_required('parent')
+def dashboard():
+    user = current_user()
+    campers = Camper.query.filter_by(parent_id=user.id).all()
+    payments = parent_payment_query(user.id).all()
+    return ok({
+        'parent': user.to_dict(),
+        'campers_count': len(campers),
+        'payments_count': len(payments),
+        'campers': [camper_with_contact(c) for c in campers],
+    })
+
+
+@parent_bp.post('/campers')
+@role_required('parent')
+def create_camper():
+    user = current_user()
+    data = request.get_json() or {}
+    required = ['full_name', 'date_of_birth', 'gender', 'emergency_contact_name', 'emergency_contact_phone']
+    if any(not data.get(field) for field in required):
+        return fail('Missing required camper information')
+
+    try:
+        dob = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+    except ValueError:
+        return fail('date_of_birth must be YYYY-MM-DD')
+
+    if dob > datetime.utcnow().date():
+        return fail('Date of birth cannot be in the future')
+
+    camper = Camper(
+        parent_id=user.id,
+        full_name=data['full_name'].strip(),
+        date_of_birth=dob,
+        gender=data['gender'].strip().lower(),
+        medical_alerts=data.get('medical_alerts')
+    )
+    db.session.add(camper)
+    db.session.flush()
+
+    contact = EmergencyContact(
+        camper_id=camper.id,
+        contact_name=data['emergency_contact_name'].strip(),
+        phone_number=data['emergency_contact_phone'].strip()
+    )
+    db.session.add(contact)
+    db.session.commit()
+    send_email(user.email, 'Camper profile created', f'Camper profile for {camper.full_name} was created successfully.')
+    return ok(camper_with_contact(camper), 'Camper profile created', 201)
+
+
+@parent_bp.get('/campers')
+@role_required('parent')
+def list_campers():
+    user = current_user()
+    campers = Camper.query.filter_by(parent_id=user.id).all()
+    return ok([camper_with_contact(c) for c in campers])
+
+
+@parent_bp.get('/sessions')
+@role_required('parent')
+def list_sessions():
+    user = current_user()
+    sessions = Session.query.order_by(Session.start_date.asc()).all()
+    return ok([session_with_availability(s, user.id) for s in sessions])
+
+
+@parent_bp.get('/enrollments')
+@role_required('parent')
+def list_enrollments():
+    user = current_user()
+    enrollments = (
+        Enrollment.query
+        .join(Camper, Enrollment.camper_id == Camper.id)
+        .filter(Camper.parent_id == user.id)
+        .order_by(Enrollment.enrolled_at.desc())
+        .all()
+    )
+    data = []
+    for enrollment in enrollments:
+        item = enrollment.to_dict()
+        item['camper_name'] = enrollment.camper.full_name if enrollment.camper else None
+        item['session'] = enrollment.session.to_dict() if getattr(enrollment, 'session', None) else None
+        data.append(item)
+    return ok(data)
+
+
+@parent_bp.post('/enrollments')
+@role_required('parent')
+def create_enrollment():
+    user = current_user()
+    data = request.get_json() or {}
+    camper_id = data.get('camper_id')
+    session_id = data.get('session_id')
+
+    if not camper_id or not session_id:
+        return fail('Camper and session are required')
+
+    camper = Camper.query.filter_by(id=camper_id, parent_id=user.id).first()
+    if not camper:
+        return fail('Camper not found', 404)
+
+    session = Session.query.get(session_id)
+    if not session:
+        return fail('Session not found', 404)
+
+    active_count = Enrollment.query.filter_by(session_id=session.id, status='active').count()
+    if active_count >= session.max_capacity:
+        return fail('This session is full')
+
+    existing = Enrollment.query.filter_by(camper_id=camper.id, session_id=session.id).first()
+    if existing and existing.status == 'active':
+        return fail('This camper is already enrolled in this session', 409)
+
+    if existing:
+        existing.status = 'active'
+        existing.cancelled_at = None
+        enrollment = existing
+    else:
+        enrollment = Enrollment(
+            camper_id=camper.id,
+            session_id=session.id,
+            status='active'
+        )
+        db.session.add(enrollment)
+
+    db.session.commit()
+
+    item = enrollment.to_dict()
+    item['camper_name'] = camper.full_name
+    item['session'] = session.to_dict()
+    return ok(item, 'Camper enrolled in session', 201)
+
+
+@parent_bp.put('/campers/<int:camper_id>')
+@role_required('parent')
+def update_camper(camper_id):
+    user = current_user()
+    camper = Camper.query.filter_by(id=camper_id, parent_id=user.id).first()
+    if not camper:
+        return fail('Camper not found', 404)
+    data = request.get_json() or {}
+    for field in ['full_name', 'gender', 'medical_alerts']:
+        if field in data:
+            setattr(camper, field, data[field].strip().lower() if field == 'gender' else data[field])
+    if 'emergency_contact_name' in data or 'emergency_contact_phone' in data:
+        contact = camper.emergency_contacts[0] if camper.emergency_contacts else EmergencyContact(camper_id=camper.id)
+        contact.contact_name = data.get('emergency_contact_name', contact.contact_name)
+        contact.phone_number = data.get('emergency_contact_phone', contact.phone_number)
+        db.session.add(contact)
+    if data.get('date_of_birth'):
+        try:
+            dob = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+        except ValueError:
+            return fail('date_of_birth must be YYYY-MM-DD')
+        if dob > datetime.utcnow().date():
+            return fail('Date of birth cannot be in the future')
+        camper.date_of_birth = dob
+    db.session.commit()
+    return ok(camper_with_contact(camper), 'Camper profile updated')
+
+
+@parent_bp.delete('/campers/<int:camper_id>')
+@role_required('parent')
+def delete_camper(camper_id):
+    user = current_user()
+    camper = Camper.query.filter_by(id=camper_id, parent_id=user.id).first()
+    if not camper:
+        return fail('Camper not found', 404)
+    db.session.delete(camper)
+    db.session.commit()
+    return ok(None, 'Camper profile removed')
+
+
+@parent_bp.post('/payments')
+@role_required('parent')
+def submit_payment():
+    user = current_user()
+    data = request.get_json() or {}
+    required = ['enrollment_id', 'amount', 'card_number', 'expiry_date', 'cvv']
+    if any(not data.get(field) for field in required):
+        return fail('Payment information is incomplete')
+
+    enrollment = (
+        Enrollment.query
+        .join(Camper, Enrollment.camper_id == Camper.id)
+        .filter(
+            Enrollment.id == data['enrollment_id'],
+            Enrollment.status == 'active',
+            Camper.parent_id == user.id
+        )
+        .first()
+    )
+    if not enrollment:
+        return fail('Enrollment not found for this parent', 404)
+
+    try:
+        amount = float(data['amount'])
+    except (TypeError, ValueError):
+        return fail('Payment amount must be a valid number')
+
+    if amount <= 0:
+        return fail('Payment amount must be greater than zero')
+
+    card_number = ''.join(ch for ch in str(data['card_number']) if ch.isdigit())
+    if len(card_number) < 12 or len(str(data['cvv'])) not in [3, 4]:
+        return fail('Payment could not be processed. Please verify your card details and try again.')
+
+    payment = Payment(
+        enrollment_id=enrollment.id,
+        amount=amount,
+        status='pending'
+    )
+    db.session.add(payment)
+    db.session.commit()
+    send_email(user.email, 'CampMondo payment submitted', f'Payment of ${payment.amount} was submitted and is pending confirmation.')
+    return ok(payment_with_camper(payment), 'Payment submitted', 201)
+
+
+@parent_bp.get('/payments')
+@role_required('parent')
+def list_payments():
+    user = current_user()
+    payments = parent_payment_query(user.id).order_by(Payment.submitted_at.desc()).all()
+    return ok([payment_with_camper(p) for p in payments])
+
+
+@parent_bp.get('/announcements')
+@role_required('parent')
+def announcements():
+    user = current_user()
+    enrollments = (
+        Enrollment.query
+        .join(Camper, Enrollment.camper_id == Camper.id)
+        .filter(Camper.parent_id == user.id, Enrollment.status == 'active')
+        .all()
+    )
+    session_ids = {e.session_id for e in enrollments}
+    group_ids = {e.group_id for e in enrollments if e.group_id}
+
+    announcements_query = Announcement.query.filter(
+        (Announcement.target_type == 'system_wide')
+        | ((Announcement.target_type == 'session') & (Announcement.target_id.in_(session_ids) if session_ids else False))
+        | ((Announcement.target_type == 'group') & (Announcement.target_id.in_(group_ids) if group_ids else False))
+    ).order_by(Announcement.published_at.desc())
+
+    return ok([a.to_dict() for a in announcements_query.all()])
