@@ -135,7 +135,42 @@ def delete_session(session_id):
     db.session.commit()
     return ok(None, 'Session deleted')
 
+@admin_bp.get('/sessions/<int:session_id>/activities')
+@role_required('admin')
+def get_session_activities(session_id):
+    Session.query.get_or_404(session_id)
+    activities = ActivityProgram.query.filter_by(session_id=session_id).all()
+    return ok([a.to_dict() for a in activities])
 
+
+@admin_bp.post('/sessions/<int:session_id>/activities')
+@role_required('admin')
+def add_session_activity(session_id):
+    Session.query.get_or_404(session_id)
+    data = request.get_json() or {}
+
+    if not data.get('name'):
+        return fail('Activity name is required')
+
+    activity = ActivityProgram(
+        session_id = session_id,
+        name       = data['name'].strip(),
+        fee        = float(data.get('fee', 0.00))
+    )
+    db.session.add(activity)
+    db.session.commit()
+    return ok(activity.to_dict(), 'Activity added', 201)
+
+
+@admin_bp.delete('/sessions/<int:session_id>/activities/<int:activity_id>')
+@role_required('admin')
+def delete_session_activity(session_id, activity_id):
+    activity = ActivityProgram.query.filter_by(id=activity_id, session_id=session_id).first()
+    if not activity:
+        return fail('Activity not found', 404)
+    db.session.delete(activity)
+    db.session.commit()
+    return ok(None, 'Activity deleted')
 # ═══════════════════════════════════════════════════════════
 #  GROUPS
 # ═══════════════════════════════════════════════════════════
