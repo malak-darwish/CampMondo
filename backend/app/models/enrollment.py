@@ -15,7 +15,12 @@ class Enrollment(db.Model):
 
     session = db.relationship('Session', backref='enrollments', lazy=True)
 
-    activities = db.relationship('EnrollmentActivity', backref='enrollment', lazy=True, cascade='all, delete-orphan')
+    activities = db.relationship(
+        'EnrollmentActivity',
+        backref='enrollment',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
 
     def to_dict(self):
         return {
@@ -36,12 +41,17 @@ class EnrollmentActivity(db.Model):
     enrollment_id = db.Column(db.Integer, db.ForeignKey('enrollments.id'), nullable=False)
     activity_id   = db.Column(db.Integer, db.ForeignKey('activity_programs.id'), nullable=False)
 
+    activity = db.relationship('ActivityProgram', lazy=True)
+
     def to_dict(self):
-        return {
+        data = {
             'id':            self.id,
             'enrollment_id': self.enrollment_id,
             'activity_id':   self.activity_id,
         }
+        if self.activity:
+            data['activity'] = self.activity.to_dict()
+        return data
 
 
 class Document(db.Model):
@@ -60,6 +70,4 @@ class Document(db.Model):
             'document_type': self.document_type,
             'file_path':     self.file_path,
             'uploaded_at':   str(self.uploaded_at),
-
         }
-

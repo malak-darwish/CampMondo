@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Navbar from '../../components/Navbar'
 import api from '../../api/axios'
 
@@ -14,7 +14,7 @@ const styles = `
   }
 
   .page-body {
-    width: min(1120px, calc(100% - 48px));
+    width: min(1180px, calc(100% - 48px));
     margin: 0 auto;
     padding: 40px 0;
   }
@@ -34,7 +34,7 @@ const styles = `
 
   .payments-grid {
     display: grid;
-    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-columns: 390px minmax(0, 1fr);
     gap: 22px;
   }
 
@@ -86,6 +86,11 @@ const styles = `
   .form-input:focus,
   .form-select:focus { border-color: #3d6b45; }
 
+  .form-input[readonly] {
+    background: #f7efe1;
+    color: #5a4a35;
+  }
+
   .primary-btn {
     width: 100%;
     min-height: 40px;
@@ -121,9 +126,47 @@ const styles = `
     border: 1px solid #f5c6c6;
   }
 
+  .breakdown-card {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #efe1ca;
+    border-radius: 10px;
+    background: #fffdf8;
+  }
+
+  .breakdown-title {
+    margin-bottom: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #2c1810;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    color: #5a4a35;
+    font-size: 13px;
+    border-top: 1px solid #f3eadf;
+  }
+
+  .breakdown-row:first-of-type { border-top: none; }
+
+  .breakdown-row.total {
+    margin-top: 6px;
+    padding-top: 10px;
+    color: #2c1810;
+    font-weight: 700;
+    border-top: 1px solid #e8d5b5;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
   .table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 760px;
   }
 
   .table th {
@@ -141,7 +184,17 @@ const styles = `
     font-size: 13px;
     color: #2c1810;
     border-bottom: 1px solid #f8f4ee;
+    vertical-align: top;
   }
+
+  .history-breakdown {
+    display: grid;
+    gap: 4px;
+    color: #5a4a35;
+    font-size: 12px;
+  }
+
+  .history-breakdown strong { color: #2c1810; }
 
   .status {
     display: inline-flex;
@@ -151,6 +204,7 @@ const styles = `
     color: #6b4f15;
     font-size: 11px;
     font-weight: 600;
+    text-transform: capitalize;
   }
 
   .empty-state,
@@ -162,7 +216,7 @@ const styles = `
 
   @media (max-width: 980px) {
     .page-body {
-      width: min(100% - 32px, 1120px);
+      width: min(100% - 32px, 1180px);
       padding: 28px 0;
     }
     .payments-grid { grid-template-columns: 1fr; }
@@ -175,6 +229,47 @@ const initialForm = {
     card_number: '',
     expiry_date: '',
     cvv: '',
+}
+
+function money(value) {
+    const number = Number(value || 0)
+    return number.toFixed(2)
+}
+
+function FeeBreakdown({ breakdown }) {
+    if (!breakdown) return null
+    return (
+        <div className="breakdown-card">
+            <div className="breakdown-title">Itemized fee</div>
+            <div className="breakdown-row">
+                <span>Session fee</span>
+                <span>${money(breakdown.session_fee)}</span>
+            </div>
+            {(breakdown.activities || []).map((activity) => (
+                <div key={activity.id} className="breakdown-row">
+                    <span>{activity.name}</span>
+                    <span>${money(activity.fee)}</span>
+                </div>
+            ))}
+            <div className="breakdown-row total">
+                <span>Total amount due</span>
+                <span>${money(breakdown.total_due)}</span>
+            </div>
+        </div>
+    )
+}
+
+function HistoryBreakdown({ breakdown }) {
+    if (!breakdown) return <span>-</span>
+    return (
+        <div className="history-breakdown">
+            <span>Session: ${money(breakdown.session_fee)}</span>
+            {(breakdown.activities || []).map((activity) => (
+                <span key={activity.id}>{activity.name}: ${money(activity.fee)}</span>
+            ))}
+            <strong>Total: ${money(breakdown.total_due)}</strong>
+        </div>
+    )
 }
 
 export default function Payments() {
@@ -201,6 +296,10 @@ export default function Payments() {
             .finally(() => setLoading(false))
     }, [])
 
+    const selectedEnrollment = useMemo(() => {
+        return enrollments.find((item) => String(item.id) === String(form.enrollment_id)) || null
+    }, [enrollments, form.enrollment_id])
+
     function update(field, value) {
         setForm((prev) => ({ ...prev, [field]: value }))
     }
@@ -210,7 +309,7 @@ export default function Payments() {
         setForm((prev) => ({
             ...prev,
             enrollment_id: enrollmentId,
-            amount: enrollment?.session?.enrollment_fee ?? prev.amount,
+            amount: enrollment?.fee_breakdown?.total_due ?? '',
         }))
     }
 
@@ -220,7 +319,11 @@ export default function Payments() {
         setMessage('')
         setSaving(true)
         try {
-            const res = await api.post('/parent/payments', form)
+            const payload = {
+                ...form,
+                amount: selectedEnrollment?.fee_breakdown?.total_due ?? form.amount,
+            }
+            const res = await api.post('/parent/payments', payload)
             setMessage(res.data.message)
             setForm(initialForm)
             await load()
@@ -238,7 +341,7 @@ export default function Payments() {
                 <Navbar />
                 <main className="page-body">
                     <h1 className="page-title">Payments</h1>
-                    <p className="page-subtitle">Submit camper payments and review payment history.</p>
+                    <p className="page-subtitle">Submit camper payments and review itemized session/activity fees.</p>
 
                     <div className="payments-grid">
                         <form className="panel" onSubmit={submit} autoComplete="off">
@@ -257,14 +360,22 @@ export default function Payments() {
                                         </option>
                                         {enrollments.map((enrollment) => (
                                             <option key={enrollment.id} value={enrollment.id}>
-                                                {enrollment.camper_name} - {enrollment.session?.name}
+                                                {enrollment.camper_name} - {enrollment.session?.name} (${money(enrollment.fee_breakdown?.total_due)})
                                             </option>
                                         ))}
                                     </select>
                                 </div>
+
+                                <FeeBreakdown breakdown={selectedEnrollment?.fee_breakdown} />
+
                                 <div className="form-field">
                                     <label className="form-label">Amount</label>
-                                    <input className="form-input" value={form.amount} onChange={(e) => update('amount', e.target.value)} placeholder="150.00" />
+                                    <input
+                                        className="form-input"
+                                        value={form.amount ? money(form.amount) : ''}
+                                        readOnly
+                                        placeholder="Calculated from session and activities"
+                                    />
                                 </div>
                                 <div className="form-field">
                                     <label className="form-label">Payment number</label>
@@ -298,7 +409,7 @@ export default function Payments() {
                                         autoComplete="off"
                                     />
                                 </div>
-                                <button className="primary-btn" disabled={saving || loading}>
+                                <button className="primary-btn" disabled={saving || loading || !form.enrollment_id}>
                                     {saving ? 'Submitting...' : 'Submit Payment'}
                                 </button>
                             </div>
@@ -313,26 +424,30 @@ export default function Payments() {
                             ) : payments.length === 0 ? (
                                 <div className="empty-state">No payments submitted yet.</div>
                             ) : (
-                                <table className="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Camper</th>
-                                            <th>Session</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {payments.map((p) => (
-                                            <tr key={p.id}>
-                                                <td>{p.camper_name}</td>
-                                                <td>{p.session_name || 'Session'}</td>
-                                                <td>${p.amount}</td>
-                                                <td><span className="status">{p.status}</span></td>
+                                <div className="table-wrap">
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Camper</th>
+                                                <th>Session</th>
+                                                <th>Itemized Fee</th>
+                                                <th>Paid Amount</th>
+                                                <th>Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {payments.map((p) => (
+                                                <tr key={p.id}>
+                                                    <td>{p.camper_name}</td>
+                                                    <td>{p.session_name || 'Session'}</td>
+                                                    <td><HistoryBreakdown breakdown={p.fee_breakdown} /></td>
+                                                    <td>${money(p.amount)}</td>
+                                                    <td><span className="status">{p.status}</span></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
                         </section>
                     </div>

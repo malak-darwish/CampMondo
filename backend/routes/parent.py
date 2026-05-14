@@ -1,17 +1,20 @@
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
 from app import db
 from app.models.camper import Camper, EmergencyContact
-from app.models.enrollment import Enrollment
+from app.models.enrollment import Enrollment, EnrollmentActivity
 from app.models.payment import Payment
-from app.models.session import Session
+from app.models.session import Session, ActivityProgram
 from app.models.announcement import Announcement
 from app.utils.auth_helpers import role_required, current_user
 from app.utils.email import send_email, send_payment_submitted_email
 
 
 parent_bp = Blueprint('parent', __name__)
+
+
+MONEY = Decimal('0.01')
 
 
 def fail(message, status=400):
@@ -22,12 +25,57 @@ def ok(data=None, message='Success', status=200):
     return jsonify({'success': True, 'data': data, 'message': message}), status
 
 
+def decimal_money(value):
+    if value is None or value == '':
+        return Decimal('0.00')
+    try:
+        return Decimal(str(value)).quantize(MONEY)
+    except (InvalidOperation, ValueError):
+        return Decimal('0.00')
+
+
+def float_money(value):
+    return float(decimal_money(value))
+
+
 def camper_with_contact(camper):
     data = camper.to_dict()
     contact = camper.emergency_contacts[0] if camper.emergency_contacts else None
     data['emergency_contact_name'] = contact.contact_name if contact else None
     data['emergency_contact_phone'] = contact.phone_number if contact else None
     return data
+
+
+def selected_activity_programs(enrollment):
+    programs = []
+    for link in enrollment.activities or []:
+        if link.activity:
+            programs.append(link.activity)
+    return programs
+
+
+def enrollment_fee_breakdown(enrollment):
+    session = enrollment.session
+    session_fee = decimal_money(session.enrollment_fee if session else 0)
+    activities = []
+    activity_total = Decimal('0.00')
+
+    for activity in selected_activity_programs(enrollment):
+        fee = decimal_money(activity.fee)
+        activity_total += fee
+        activities.append({
+            'id': activity.id,
+            'name': activity.name,
+            'fee': float(fee),
+        })
+
+    total_due = (session_fee + activity_total).quantize(MONEY)
+    return {
+        'session_fee': float(session_fee),
+        'activities': activities,
+        'activity_total': float(activity_total.quantize(MONEY)),
+        'total_due': float(total_due),
+    }
 
 
 def parent_payment_query(parent_id):
@@ -41,12 +89,15 @@ def parent_payment_query(parent_id):
 
 def payment_with_camper(payment):
     data = payment.to_dict()
-    camper = payment.enrollment.camper if payment.enrollment else None
-    session = payment.enrollment.session if payment.enrollment else None
+    enrollment = payment.enrollment
+    camper = enrollment.camper if enrollment else None
+    session = enrollment.session if enrollment else None
     data['camper_name'] = camper.full_name if camper else None
     data['session_name'] = session.name if session else None
     data['payment_date'] = data.get('submitted_at')
     data['card_last4'] = None
+    if enrollment:
+        data['fee_breakdown'] = enrollment_fee_breakdown(enrollment)
     return data
 
 
@@ -70,6 +121,11 @@ def enrollment_with_details(enrollment):
     item = enrollment.to_dict()
     item['camper_name'] = enrollment.camper.full_name if enrollment.camper else None
     item['session'] = enrollment.session.to_dict() if getattr(enrollment, 'session', None) else None
+    selected = [activity.to_dict() for activity in selected_activity_programs(enrollment)]
+    item['selected_activities'] = selected
+    item['selected_activity_ids'] = [activity['id'] for activity in selected]
+    item['fee_breakdown'] = enrollment_fee_breakdown(enrollment)
+    item['total_fee'] = item['fee_breakdown']['total_due']
     item.update(cancellation_metadata(enrollment))
     return item
 
@@ -97,6 +153,65 @@ def session_with_availability(session, parent_id=None):
             data['enrolled_camper_ids'] = []
             data['parent_enrollments'] = []
     return data
+
+
+def parse_activity_ids(raw_activity_ids):
+    if raw_activity_ids in (None, ''):
+        return []
+    if not isinstance(raw_activity_ids, list):
+        raise ValueError('activity_program_ids must be a list')
+
+    parsed = []
+    for raw_id in raw_activity_ids:
+        try:
+            activity_id = int(raw_id)
+        except (TypeError, ValueError):
+            raise ValueError('Invalid activity program selected')
+        if activity_id not in parsed:
+            parsed.append(activity_id)
+    return parsed
+
+
+def validate_selected_activities(session, raw_activity_ids):
+    activity_ids = parse_activity_ids(raw_activity_ids)
+    session_activities = list(session.activity_programs or [])
+    session_activity_ids = {activity.id for activity in session_activities}
+
+    if session_activity_ids and not activity_ids:
+        raise ValueError('Select at least one activity program')
+
+    invalid_ids = [activity_id for activity_id in activity_ids if activity_id not in session_activity_ids]
+    if invalid_ids:
+        raise ValueError('One or more selected activities do not belong to this session')
+
+    return [activity for activity in session_activities if activity.id in activity_ids]
+
+
+def replace_enrollment_activities(enrollment, selected_activities):
+    for link in list(enrollment.activities or []):
+        db.session.delete(link)
+    db.session.flush()
+
+    for activity in selected_activities:
+        db.session.add(EnrollmentActivity(
+            enrollment_id=enrollment.id,
+            activity_id=activity.id,
+        ))
+
+
+def overlapping_active_enrollment(camper, session):
+    return (
+        Enrollment.query
+        .join(Session, Enrollment.session_id == Session.id)
+        .filter(
+            Enrollment.camper_id == camper.id,
+            Enrollment.status == 'active',
+            Enrollment.session_id != session.id,
+            Session.start_date <= session.end_date,
+            Session.end_date >= session.start_date,
+        )
+        .first()
+    )
 
 
 @parent_bp.get('/dashboard')
@@ -201,13 +316,22 @@ def create_enrollment():
     if not session:
         return fail('Session not found', 404)
 
+    try:
+        selected_activities = validate_selected_activities(session, data.get('activity_program_ids', data.get('activity_ids')))
+    except ValueError as exc:
+        return fail(str(exc))
+
     active_count = Enrollment.query.filter_by(session_id=session.id, status='active').count()
     if active_count >= session.max_capacity:
-        return fail('This session is full')
+        return fail('Session is full')
 
     existing = Enrollment.query.filter_by(camper_id=camper.id, session_id=session.id).first()
     if existing and existing.status == 'active':
         return fail('This camper is already enrolled in this session', 409)
+
+    overlapping = overlapping_active_enrollment(camper, session)
+    if overlapping:
+        return fail('Camper is already enrolled in an overlapping camp session', 409)
 
     if existing:
         existing.status = 'active'
@@ -220,13 +344,12 @@ def create_enrollment():
             status='active'
         )
         db.session.add(enrollment)
+        db.session.flush()
 
+    replace_enrollment_activities(enrollment, selected_activities)
     db.session.commit()
 
-    item = enrollment.to_dict()
-    item['camper_name'] = camper.full_name
-    item['session'] = session.to_dict()
-    return ok(item, 'Camper enrolled in session', 201)
+    return ok(enrollment_with_details(enrollment), 'Camper enrolled in session', 201)
 
 
 @parent_bp.delete('/enrollments/<int:enrollment_id>')
@@ -276,7 +399,8 @@ def update_camper(camper_id):
     data = request.get_json() or {}
     for field in ['full_name', 'gender', 'medical_alerts']:
         if field in data:
-            setattr(camper, field, data[field].strip().lower() if field == 'gender' else data[field])
+            value = data[field]
+            setattr(camper, field, value.strip().lower() if field == 'gender' and value else value)
     if 'emergency_contact_name' in data or 'emergency_contact_phone' in data:
         contact = camper.emergency_contacts[0] if camper.emergency_contacts else EmergencyContact(camper_id=camper.id)
         contact.contact_name = data.get('emergency_contact_name', contact.contact_name)
@@ -311,7 +435,7 @@ def delete_camper(camper_id):
 def submit_payment():
     user = current_user()
     data = request.get_json() or {}
-    required = ['enrollment_id', 'amount', 'card_number', 'expiry_date', 'cvv']
+    required = ['enrollment_id', 'card_number', 'expiry_date', 'cvv']
     if any(not data.get(field) for field in required):
         return fail('Payment information is incomplete')
 
@@ -328,13 +452,13 @@ def submit_payment():
     if not enrollment:
         return fail('Enrollment not found for this parent', 404)
 
-    try:
-        amount = float(data['amount'])
-    except (TypeError, ValueError):
-        return fail('Payment amount must be a valid number')
-
-    if amount <= 0:
+    total_due = decimal_money(enrollment_fee_breakdown(enrollment)['total_due'])
+    if total_due <= 0:
         return fail('Payment amount must be greater than zero')
+
+    submitted_amount = data.get('amount')
+    if submitted_amount not in (None, '') and decimal_money(submitted_amount) != total_due:
+        return fail('Payment amount must match the selected session and activity fees')
 
     card_number = ''.join(ch for ch in str(data['card_number']) if ch.isdigit())
     if len(card_number) < 12 or len(str(data['cvv'])) not in [3, 4]:
@@ -342,7 +466,7 @@ def submit_payment():
 
     payment = Payment(
         enrollment_id=enrollment.id,
-        amount=amount,
+        amount=total_due,
         status='pending'
     )
     db.session.add(payment)
