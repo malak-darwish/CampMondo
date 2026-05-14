@@ -424,6 +424,11 @@ export default function AIAssistant() {
                                     onChange={(e) =>
                                         setMessage(e.target.value)
                                     }
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter'&& !loading) {
+                                            sendMessage()
+                                        }
+                                    }}
                                 />
 
                                 <button

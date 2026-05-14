@@ -5,11 +5,14 @@ from app import db
 from app.models.session import Session, ActivityProgram
 from app.models.group import Group
 from app.models.user import User
+from app.models.camper import Camper
 from app.models.payment import Payment
 from app.models.announcement import Announcement
 from app.models.incident import IncidentReport
 from app.utils.auth_helpers import role_required, hash_password
 from app.utils.email import send_staff_welcome_email
+from datetime import datetime
+from app.models.enrollment import Enrollment
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -101,7 +104,6 @@ def create_session():
 @admin_bp.put('/sessions/<int:session_id>')
 @role_required('admin')
 def edit_session(session_id):
-    from app.models.enrollment import Enrollment
     enrolled = Enrollment.query.filter_by(session_id=session_id, status='active').first()
     if enrolled:
         return fail('Cannot edit a session that has active enrollments')
@@ -122,7 +124,6 @@ def edit_session(session_id):
 @admin_bp.delete('/sessions/<int:session_id>')
 @role_required('admin')
 def delete_session(session_id):
-    from app.models.enrollment import Enrollment
     enrolled = Enrollment.query.filter_by(session_id=session_id, status='active').first()
     if enrolled:
         return fail('Cannot delete a session that has active enrollments')
@@ -147,7 +148,6 @@ def get_groups(session_id):
 @admin_bp.get('/sessions/<int:session_id>/enrollments')
 @role_required('admin')
 def get_session_enrollments(session_id):
-    from app.models.enrollment import Enrollment
     enrollments = Enrollment.query.filter_by(session_id=session_id, status='active').all()
     data = []
     for enrollment in enrollments:
@@ -199,7 +199,6 @@ def assign_staff(group_id):
 @admin_bp.put('/groups/<int:group_id>/assign-camper')
 @role_required('admin')
 def assign_camper(group_id):
-    from app.models.enrollment import Enrollment
     data      = request.get_json() or {}
     camper_id = data.get('camper_id')
     group     = Group.query.get_or_404(group_id)
@@ -220,31 +219,30 @@ def assign_camper(group_id):
 # ═══════════════════════════════════════════════════════════
 #  STAFF MANAGEMENT
 # ═══════════════════════════════════════════════════════════
- 
+
 @admin_bp.get('/staff')
 @role_required('admin')
 def get_staff():
     staff_list = User.query.filter_by(role='staff').all()
     return ok([s.to_dict() for s in staff_list])
- 
- 
+
+
 @admin_bp.post('/staff')
 @role_required('admin')
 def create_staff():
     data = request.get_json() or {}
- 
+
     if not data.get('full_name') or not data.get('email'):
         return fail('Full name and email are required')
- 
+
     email = data['email'].strip().lower()
     if User.query.filter_by(email=email).first():
         return fail('Email is already registered', 409)
- 
+
     # Generate a temp password that satisfies is_strong_password
-    # (8+ chars, upper, lower, digit). token_urlsafe gives entropy;
-    # we prepend a fixed seed to guarantee the policy is met.
+    # (8+ chars, upper, lower, digit).
     temp_password = 'Cm1' + secrets.token_urlsafe(9)
- 
+
     new_staff = User(
         full_name            = data['full_name'].strip(),
         email                = email,
@@ -256,13 +254,13 @@ def create_staff():
     )
     db.session.add(new_staff)
     db.session.commit()
- 
+
     # FR 4.8: send temp password via email
     send_staff_welcome_email(new_staff, temp_password)
- 
+
     return ok(new_staff.to_dict(), 'Staff account created', 201)
- 
- 
+
+
 @admin_bp.put('/staff/<int:staff_id>/deactivate')
 @role_required('admin')
 def deactivate_staff(staff_id):
@@ -272,8 +270,8 @@ def deactivate_staff(staff_id):
     staff.is_active = False
     db.session.commit()
     return ok(staff.to_dict(), 'Staff account deactivated')
- 
- 
+
+
 @admin_bp.put('/staff/<int:staff_id>/reactivate')
 @role_required('admin')
 def reactivate_staff(staff_id):
@@ -284,6 +282,34 @@ def reactivate_staff(staff_id):
     db.session.commit()
     return ok(staff.to_dict(), 'Staff account reactivated')
 
+
+# ═══════════════════════════════════════════════════════════
+#  CAMPERS (admin lookup — used by Reports filter dropdowns)
+# ═══════════════════════════════════════════════════════════
+
+@admin_bp.get('/campers')
+@role_required('admin')
+def get_campers():
+    session_id = request.args.get('session_id', type=int)
+
+    if session_id:
+        # Only campers with an active enrollment in this session.
+        enrollments = Enrollment.query.filter_by(
+            session_id=session_id, status='active'
+        ).all()
+        camper_ids = list({e.camper_id for e in enrollments})
+        if not camper_ids:
+            return ok([])
+        campers = (Camper.query
+                   .filter(Camper.id.in_(camper_ids))
+                   .order_by(Camper.full_name.asc())
+                   .all())
+    else:
+        campers = Camper.query.order_by(Camper.full_name.asc()).all()
+
+    return ok([c.to_dict() for c in campers])
+
+
 # ═══════════════════════════════════════════════════════════
 #  PAYMENTS (admin view)
 # ═══════════════════════════════════════════════════════════
@@ -292,15 +318,45 @@ def reactivate_staff(staff_id):
 @role_required('admin')
 def get_payments():
     session_id = request.args.get('session_id')
+    camper_id  = request.args.get('camper_id')
     status     = request.args.get('status')
+    start_raw  = request.args.get('start_date')
+    end_raw    = request.args.get('end_date')
 
     query = Payment.query
-    if session_id:
-        from app.models.enrollment import Enrollment
-        enrollment_ids = [e.id for e in Enrollment.query.filter_by(session_id=int(session_id)).all()]
+
+    # When session_id or camper_id is given, narrow by enrollment ids.
+    if session_id or camper_id:
+        enr_q = Enrollment.query
+        if session_id:
+            enr_q = enr_q.filter_by(session_id=int(session_id))
+        if camper_id:
+            enr_q = enr_q.filter_by(camper_id=int(camper_id))
+        enrollment_ids = [e.id for e in enr_q.all()]
+        if not enrollment_ids:
+            return ok([])
         query = query.filter(Payment.enrollment_id.in_(enrollment_ids))
+
     if status:
+        if status not in ('pending', 'confirmed', 'failed'):
+            return fail('Status must be pending, confirmed, or failed')
         query = query.filter_by(status=status)
+
+    if start_raw:
+        try:
+            start = datetime.strptime(start_raw, '%Y-%m-%d')
+        except ValueError:
+            return fail('Invalid start_date (YYYY-MM-DD)')
+        query = query.filter(Payment.submitted_at >= start)
+
+    if end_raw:
+        try:
+            end = datetime.strptime(end_raw, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59
+            )
+        except ValueError:
+            return fail('Invalid end_date (YYYY-MM-DD)')
+        query = query.filter(Payment.submitted_at <= end)
 
     payments = query.order_by(Payment.submitted_at.desc()).all()
     return ok([payment_details(p) for p in payments])
@@ -309,20 +365,25 @@ def get_payments():
 @admin_bp.put('/payments/<int:payment_id>/status')
 @role_required('admin')
 def update_payment_status(payment_id):
-    from datetime import datetime
     current_user_id = int(get_jwt_identity())
-    data    = request.get_json() or {}
-    status  = data.get('status')
+    data   = request.get_json() or {}
+    status = data.get('status')
 
-    if status not in ['pending', 'confirmed', 'failed']:
+    # Accept either "note" (existing convention) or "admin_note"
+    note = (data.get('note') or data.get('admin_note') or '').strip()
+
+    if status not in ('pending', 'confirmed', 'failed'):
         return fail('Status must be pending, confirmed, or failed')
+
+    # FR 4.12: justification note is REQUIRED for any manual override.
+    if not note:
+        return fail('A justification note is required when overriding a payment status')
 
     payment             = Payment.query.get_or_404(payment_id)
     payment.status      = status
-    payment.admin_note  = data.get('note')
+    payment.admin_note  = note
     payment.override_by = current_user_id
-    if status == 'confirmed':
-        payment.confirmed_at = datetime.utcnow()
+    payment.confirmed_at = datetime.utcnow() if status == 'confirmed' else None
 
     db.session.commit()
     return ok(payment_details(payment), 'Payment status updated')
