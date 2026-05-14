@@ -29,12 +29,4 @@ class ActivityLog(db.Model):
             'duration_minutes': self.duration_minutes,
             'description':      self.description,
             'created_at':       str(self.created_at),
-<<<<<<< ours
-<<<<<<< HEAD
         }
-=======
-        }
->>>>>>> 936b760 (Merge staff dashboard with parent portal project)
-=======
-        }
->>>>>>> theirs
