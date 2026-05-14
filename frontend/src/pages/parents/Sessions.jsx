@@ -84,7 +84,8 @@ const styles = `
 
   .session-body { padding: 18px 22px 22px; }
 
-  .activity-list {
+  .activity-list,
+  .selected-activity-list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -98,6 +99,59 @@ const styles = `
     padding: 5px 10px;
     font-size: 12px;
   }
+
+  .activity-picker {
+    margin: 16px 0;
+    padding: 12px;
+    border: 1px solid #efe1ca;
+    border-radius: 10px;
+    background: #fffdf8;
+  }
+
+  .activity-picker-title {
+    margin-bottom: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #5a4a35;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+  }
+
+  .activity-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 32px;
+    padding: 7px 0;
+    border-top: 1px solid #f3eadf;
+    color: #2c1810;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .activity-option:first-of-type { border-top: none; }
+
+  .activity-option input { width: 16px; height: 16px; }
+
+  .activity-fee {
+    color: #8a7a65;
+    font-weight: 600;
+  }
+
+  .fee-preview,
+  .fee-breakdown {
+    margin: 10px 0 16px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f7efe1;
+    color: #5a4a35;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .fee-preview strong,
+  .fee-breakdown strong { color: #2c1810; }
 
   .enrollment-list {
     display: grid;
@@ -221,10 +275,29 @@ const styles = `
   }
 `
 
+function money(value) {
+    const number = Number(value || 0)
+    return number.toFixed(2)
+}
+
+function feePreview(session, selectedActivityIds) {
+    const sessionFee = Number(session.enrollment_fee || 0)
+    const selectedSet = new Set((selectedActivityIds || []).map(String))
+    const selectedActivities = (session.activities || []).filter((activity) => selectedSet.has(String(activity.id)))
+    const activityTotal = selectedActivities.reduce((sum, activity) => sum + Number(activity.fee || 0), 0)
+    return {
+        sessionFee,
+        selectedActivities,
+        activityTotal,
+        total: sessionFee + activityTotal,
+    }
+}
+
 export default function Sessions() {
     const [sessions, setSessions] = useState([])
     const [campers, setCampers] = useState([])
     const [selectedCampers, setSelectedCampers] = useState({})
+    const [selectedActivities, setSelectedActivities] = useState({})
     const [loading, setLoading] = useState(true)
     const [savingSessionId, setSavingSessionId] = useState(null)
     const [cancellingEnrollmentId, setCancellingEnrollmentId] = useState(null)
@@ -253,8 +326,20 @@ export default function Sessions() {
         }, {})
     }, [campers])
 
-    async function enroll(sessionId) {
+    function toggleActivity(sessionId, activityId) {
+        setSelectedActivities((prev) => {
+            const current = new Set((prev[sessionId] || []).map(String))
+            const key = String(activityId)
+            if (current.has(key)) current.delete(key)
+            else current.add(key)
+            return { ...prev, [sessionId]: Array.from(current) }
+        })
+    }
+
+    async function enroll(session) {
+        const sessionId = session.id
         const camperId = selectedCampers[sessionId]
+        const activityIds = selectedActivities[sessionId] || []
         setMessage('')
         setError('')
 
@@ -263,16 +348,23 @@ export default function Sessions() {
             return
         }
 
+        if ((session.activities || []).length > 0 && activityIds.length === 0) {
+            setError('Select at least one activity program before enrolling')
+            return
+        }
+
         setSavingSessionId(sessionId)
         try {
             const res = await api.post('/parent/enrollments', {
                 camper_id: camperId,
                 session_id: sessionId,
+                activity_program_ids: activityIds.map(Number),
             })
             const camperName = camperById[String(camperId)]?.full_name || 'Camper'
             setMessage(`${camperName} enrolled successfully.`)
             await load()
             setSelectedCampers((prev) => ({ ...prev, [sessionId]: '' }))
+            setSelectedActivities((prev) => ({ ...prev, [sessionId]: [] }))
             return res
         } catch (err) {
             setError(err.response?.data?.message || 'Could not enroll camper')
@@ -308,7 +400,7 @@ export default function Sessions() {
                 <Navbar />
                 <main className="page-body">
                     <h1 className="page-title">Available Sessions</h1>
-                    <p className="page-subtitle">Review camp sessions, enroll campers, or cancel eligible enrollments.</p>
+                    <p className="page-subtitle">Review camp sessions, choose activity programs, enroll campers, or cancel eligible enrollments.</p>
 
                     {message && <div className="message success">{message}</div>}
                     {error && <div className="message error">{error}</div>}
@@ -326,6 +418,8 @@ export default function Sessions() {
                                     : (session.enrolled_camper_ids || [])
                                         .map((id) => camperById[String(id)]?.full_name)
                                         .filter(Boolean)
+                                const chosenActivityIds = selectedActivities[session.id] || []
+                                const preview = feePreview(session, chosenActivityIds)
 
                                 return (
                                     <article key={session.id} className="session-card">
@@ -333,7 +427,7 @@ export default function Sessions() {
                                             <div className="session-name">{session.name}</div>
                                             <div className="session-dates">{session.start_date} to {session.end_date}</div>
                                             <div className="session-meta">
-                                                ${session.enrollment_fee} enrollment fee | {session.spots_left} spots left
+                                                ${money(session.enrollment_fee)} enrollment fee | {session.spots_left} spots left
                                             </div>
                                         </div>
                                         <div className="session-body">
@@ -342,7 +436,7 @@ export default function Sessions() {
                                                     ? <span className="activity-pill">No activities listed</span>
                                                     : session.activities.map((activity) => (
                                                         <span key={activity.id} className="activity-pill">
-                                                            {activity.name} (${activity.fee})
+                                                            {activity.name} (${money(activity.fee)})
                                                         </span>
                                                     ))}
                                             </div>
@@ -353,6 +447,20 @@ export default function Sessions() {
                                                         <div key={enrollment.id} className="enrollment-row">
                                                             <div>
                                                                 <div className="enrollment-name">Enrolled: {enrollment.camper_name}</div>
+                                                                <div className="selected-activity-list">
+                                                                    {(enrollment.selected_activities || []).length === 0
+                                                                        ? <span className="activity-pill">No selected activities</span>
+                                                                        : enrollment.selected_activities.map((activity) => (
+                                                                            <span key={activity.id} className="activity-pill">
+                                                                                {activity.name} (${money(activity.fee)})
+                                                                            </span>
+                                                                        ))}
+                                                                </div>
+                                                                <div className="fee-breakdown">
+                                                                    Session fee: ${money(enrollment.fee_breakdown?.session_fee)}<br />
+                                                                    Activity fees: ${money(enrollment.fee_breakdown?.activity_total)}<br />
+                                                                    <strong>Total due: ${money(enrollment.fee_breakdown?.total_due)}</strong>
+                                                                </div>
                                                                 <div className="enrollment-note">
                                                                     {enrollment.can_cancel
                                                                         ? `Cancellation allowed until ${enrollment.cancellation_deadline}.`
@@ -377,26 +485,54 @@ export default function Sessions() {
                                             {session.is_full ? (
                                                 <div className="status full">Session full</div>
                                             ) : (
-                                                <div className="enroll-row">
-                                                    <select
-                                                        className="form-select"
-                                                        value={selectedCampers[session.id] || ''}
-                                                        onChange={(e) => setSelectedCampers({ ...selectedCampers, [session.id]: e.target.value })}
-                                                        disabled={campers.length === 0}
-                                                    >
-                                                        <option value="">{campers.length === 0 ? 'Register a camper first' : 'Choose camper'}</option>
-                                                        {campers.map((camper) => (
-                                                            <option key={camper.id} value={camper.id}>{camper.full_name}</option>
-                                                        ))}
-                                                    </select>
-                                                    <button
-                                                        className="primary-btn"
-                                                        onClick={() => enroll(session.id)}
-                                                        disabled={campers.length === 0 || savingSessionId === session.id}
-                                                    >
-                                                        {savingSessionId === session.id ? 'Enrolling...' : 'Enroll'}
-                                                    </button>
-                                                </div>
+                                                <>
+                                                    {(session.activities || []).length > 0 && (
+                                                        <div className="activity-picker">
+                                                            <div className="activity-picker-title">Select activity programs</div>
+                                                            {session.activities.map((activity) => {
+                                                                const checked = chosenActivityIds.map(String).includes(String(activity.id))
+                                                                return (
+                                                                    <label key={activity.id} className="activity-option">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={checked}
+                                                                            onChange={() => toggleActivity(session.id, activity.id)}
+                                                                        />
+                                                                        <span>{activity.name}</span>
+                                                                        <span className="activity-fee">${money(activity.fee)}</span>
+                                                                    </label>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="fee-preview">
+                                                        Session fee: ${money(preview.sessionFee)}<br />
+                                                        Activity fees: ${money(preview.activityTotal)}<br />
+                                                        <strong>Total due: ${money(preview.total)}</strong>
+                                                    </div>
+
+                                                    <div className="enroll-row">
+                                                        <select
+                                                            className="form-select"
+                                                            value={selectedCampers[session.id] || ''}
+                                                            onChange={(e) => setSelectedCampers({ ...selectedCampers, [session.id]: e.target.value })}
+                                                            disabled={campers.length === 0}
+                                                        >
+                                                            <option value="">{campers.length === 0 ? 'Register a camper first' : 'Choose camper'}</option>
+                                                            {campers.map((camper) => (
+                                                                <option key={camper.id} value={camper.id}>{camper.full_name}</option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            className="primary-btn"
+                                                            onClick={() => enroll(session)}
+                                                            disabled={campers.length === 0 || savingSessionId === session.id}
+                                                        >
+                                                            {savingSessionId === session.id ? 'Enrolling...' : 'Enroll'}
+                                                        </button>
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
                                     </article>
