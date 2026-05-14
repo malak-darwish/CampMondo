@@ -12,7 +12,6 @@ from typing import Optional
 
 from flask import current_app
 from flask_mail import Message
-
 from app import mail
 
 
@@ -60,7 +59,6 @@ def send_email(to: str, subject: str, body: str, html: Optional[str] = None) -> 
         print(f'[EMAIL FAILED] To: {to} | Subject: {subject} | Error: {exc}')
         return False
 
-
 # ───────────────────────────────────────────────────────────
 #  HTML WRAPPER (consistent CampMondo branding)
 #  Plain string formatting — no Jinja involved.
@@ -104,6 +102,49 @@ def _frontend_url(path: str = '') -> str:
 #  TEMPLATED EMAILS
 #  Each wrapped in try/except so the caller never crashes.
 # ───────────────────────────────────────────────────────────
+
+def send_incident_notification(parent_email, parent_name, camper_name,
+                                incident_date, description, session_name) -> bool:
+    """Sent to a parent when staff files an incident report for their child."""
+    try:
+        subject = f"Incident Report – {camper_name} at CampMondo"
+        body = (
+            f'Hi {parent_name},\n\n'
+            f'An incident involving your child {camper_name} was recorded on '
+            f'{incident_date} during the {session_name} session.\n\n'
+            f'Details: {description}\n\n'
+            f'Please contact us if you have any questions.\n\n'
+            f'— The CampMondo Team'
+        )
+
+        safe_parent   = escape(parent_name or 'Parent')
+        safe_camper   = escape(camper_name or 'your child')
+        safe_date     = escape(str(incident_date))
+        safe_session  = escape(session_name or 'your session')
+        safe_desc     = escape(description or '')
+
+        html_inner = (
+            f'<h2 style="margin:0 0 12px;color:#2c1810;font-family:Georgia,serif;">'
+            f'Incident Report for {safe_camper}</h2>'
+            f'<p>Hi {safe_parent},</p>'
+            f'<p>We want to inform you that an incident involving your child '
+            f'<strong>{safe_camper}</strong> was recorded on '
+            f'<strong>{safe_date}</strong> during the '
+            f'<strong>{safe_session}</strong> session.</p>'
+            f'<div style="background:#f5f0e8;border-left:4px solid #e8a838;'
+            f'padding:16px;margin:20px 0;border-radius:4px;">'
+            f'<p style="margin:0;"><strong>Details:</strong></p>'
+            f'<p style="margin:8px 0 0;">{safe_desc}</p>'
+            f'</div>'
+            f'<p>A staff member has been notified. Please contact us if you have any questions.</p>'
+            f'<p style="margin-top:24px;">— The CampMondo Team</p>'
+        )
+
+        return send_email(parent_email, subject, body, html=_wrap_html(html_inner))
+    except Exception as exc:
+        logger.error(f'send_incident_notification crashed: {exc}')
+        print(f'[EMAIL HELPER CRASHED] send_incident_notification: {exc}')
+        return False
 
 def send_staff_welcome_email(user, temp_password: str) -> bool:
     """Sent when an admin creates a new staff account (FR 4.8)."""
@@ -313,3 +354,40 @@ def send_account_locked_email(user) -> bool:
         logger.error(f'send_account_locked_email crashed: {exc}')
         print(f'[EMAIL HELPER CRASHED] send_account_locked_email: {exc}')
         return False
+    
+def send_announcement_notification(parent_email, parent_name,
+                                    title, body_text, target_label) -> bool:
+    """Sent to parents when admin posts an announcement targeting them."""
+    try:
+        subject = f'CampMondo Announcement: {title}'
+        body = (
+            f'Hi {parent_name},\n\n'
+            f'{title}\n\n'
+            f'{body_text}\n\n'
+            f'— The CampMondo Team'
+        )
+
+        safe_parent  = escape(parent_name or 'Parent')
+        safe_title   = escape(title or '')
+        safe_body    = escape(body_text or '')
+        safe_label   = escape(target_label or 'CampMondo')
+
+        html_inner = (
+            f'<p style="color:#8a7a65;font-size:13px;margin:0 0 8px;">Announcement · {safe_label}</p>'
+            f'<h2 style="margin:0 0 16px;color:#2c1810;font-family:Georgia,serif;">{safe_title}</h2>'
+            f'<p>Hi {safe_parent},</p>'
+            f'<div style="background:#f5f0e8;padding:20px;border-radius:6px;margin:16px 0;">'
+            f'<p style="margin:0;white-space:pre-line;">{safe_body}</p>'
+            f'</div>'
+            f'<p style="margin-top:24px;">— The CampMondo Team</p>'
+        )
+
+        return send_email(parent_email, subject, body, html=_wrap_html(html_inner))
+    except Exception as exc:
+        logger.error(f'send_announcement_notification crashed: {exc}')
+        print(f'[EMAIL HELPER CRASHED] send_announcement_notification: {exc}')
+        return False
+
+    
+
+    

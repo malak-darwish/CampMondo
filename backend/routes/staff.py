@@ -1,7 +1,10 @@
 from datetime import datetime
 
+from app.models.session import Session
+import app
+from app.utils.email import send_incident_notification
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.models.activity_log import ActivityLog
@@ -429,6 +432,23 @@ def create_incident():
     db.session.add(incident)
     db.session.commit()
 
+    try:
+        camper = Camper.query.get(incident.camper_id)
+        if camper and camper.parent_id:
+            parent = User.query.get(camper.parent_id)
+            session = Session.query.get(incident.session_id)
+            if parent and parent.email:
+                send_incident_notification(
+                    parent_email=parent.email,
+                    parent_name=parent.full_name or 'Parent',
+                    camper_name=camper.full_name or 'your child',
+                    incident_date=incident.incident_date.strftime('%B %d, %Y'),
+                    description=incident.description,
+                    session_name=session.name if session else 'your session'
+                )
+    except Exception as e:
+        print(f'[EMAIL] Incident notification failed: {e}')
+
     return ok(incident_details(incident), 'Incident report submitted', 201)
 
 
@@ -472,8 +492,6 @@ def delete_incident(incident_id):
     db.session.delete(incident)
     db.session.commit()
     return ok(None, 'Incident deleted successfully')
-
-
 @staff_bp.get('/dashboard-stats')
 @role_required('staff')
 def dashboard_stats():

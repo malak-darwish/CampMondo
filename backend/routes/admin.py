@@ -1,4 +1,5 @@
 import secrets
+from chromadb import logger
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 from app import db
@@ -13,6 +14,7 @@ from app.utils.auth_helpers import role_required, hash_password
 from app.utils.email import send_staff_welcome_email
 from datetime import datetime
 from app.models.enrollment import Enrollment
+from app.utils.email import send_announcement_notification
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -418,6 +420,55 @@ def create_announcement():
     )
     db.session.add(announcement)
     db.session.commit()
+
+    # ── Notify parents ──────────────────────────────────────
+    try:
+        target_type = data.get('target_type', 'system_wide')
+        target_id   = data.get('target_id')
+
+        if target_type == 'system_wide':
+            parents = User.query.filter_by(role='parent', is_active=True).all()
+            label   = 'All Families'
+
+        elif target_type == 'session':
+            parents = (
+                db.session.query(User)
+                .join(Camper, Camper.parent_id == User.id)
+                .join(Enrollment, Enrollment.camper_id == Camper.id)
+                .filter(Enrollment.session_id == target_id, Enrollment.status == 'active')
+                .distinct().all()
+            )
+            s     = Session.query.get(target_id)
+            label = f'Session: {s.name}' if s else 'Your Session'
+
+        elif target_type == 'group':
+            parents = (
+                db.session.query(User)
+                .join(Camper, Camper.parent_id == User.id)
+                .join(Enrollment, Enrollment.camper_id == Camper.id)
+                .filter(Enrollment.group_id == target_id, Enrollment.status == 'active')
+                .distinct().all()
+            )
+            g     = Group.query.get(target_id)
+            label = f'Group: {g.name}' if g else 'Your Group'
+
+        else:
+            parents = []
+            label   = 'CampMondo'
+
+        for parent in parents:
+            if parent.email:
+                send_announcement_notification(
+                    parent_email = parent.email,
+                    parent_name  = parent.full_name or 'Parent',
+                    title        = data['title'],
+                    body_text    = data['body'],
+                    target_label = label
+                )
+    except Exception as e:
+        logger.warning(f'Announcement email(s) failed: {e}')
+    # ────────────────────────────────────────────────────────
+
     return ok(announcement.to_dict(), 'Announcement posted', 201)
 
 
