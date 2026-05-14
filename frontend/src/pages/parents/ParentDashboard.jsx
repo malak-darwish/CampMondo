@@ -164,7 +164,7 @@ const styles = `
 
   .camper-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1.2fr 0.8fr 1.2fr auto;
     gap: 14px;
     padding: 16px 22px;
     border-bottom: 1px solid #f8f4ee;
@@ -182,6 +182,141 @@ const styles = `
   .camper-meta {
     font-size: 12px;
     color: #8a7a65;
+    line-height: 1.5;
+  }
+
+  .camper-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .small-btn,
+  .danger-btn,
+  .ghost-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .small-btn {
+    background: #3d6b45;
+    color: #fff;
+    border: 1px solid #3d6b45;
+  }
+
+  .small-btn:hover { background: #2c4a2e; }
+
+  .danger-btn {
+    background: #fff;
+    color: #b3261e;
+    border: 1px solid #efc4bf;
+  }
+
+  .danger-btn:hover { background: #fdecea; }
+
+  .ghost-btn {
+    background: #fff;
+    color: #5a4a35;
+    border: 1px solid #e0d0b8;
+  }
+
+  .ghost-btn:hover { background: #f7efe3; }
+
+  .small-btn:disabled,
+  .danger-btn:disabled,
+  .ghost-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .edit-panel {
+    grid-column: 1 / -1;
+    background: #fff;
+    border: 1px solid #e8d5b5;
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 4px;
+  }
+
+  .edit-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2c1810;
+    margin-bottom: 14px;
+  }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .edit-field.full { grid-column: 1 / -1; }
+
+  .edit-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #5a4a35;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 7px;
+  }
+
+  .edit-input,
+  .edit-select,
+  .edit-textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1.5px solid #e0d0b8;
+    border-radius: 8px;
+    background: #fff;
+    color: #2c1810;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+
+  .edit-input:focus,
+  .edit-select:focus,
+  .edit-textarea:focus {
+    border-color: #3d6b45;
+  }
+
+  .edit-textarea {
+    min-height: 84px;
+    resize: vertical;
+  }
+
+  .edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .message {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c7e8c9;
+  }
+
+  .message.error {
+    background: #fdecea;
+    color: #c62828;
+    border: 1px solid #f5c6c6;
   }
 
   .empty-state {
@@ -215,15 +350,33 @@ const styles = `
     .parent-header { flex-direction: column; }
     .parent-stats,
     .quicklinks,
-    .camper-row { grid-template-columns: 1fr; }
+    .camper-row,
+    .edit-grid { grid-template-columns: 1fr; }
+    .camper-actions { justify-content: flex-start; }
   }
 `
+
+function camperToForm(camper) {
+    return {
+        full_name: camper.full_name || '',
+        date_of_birth: camper.date_of_birth || '',
+        gender: camper.gender || '',
+        emergency_contact_name: camper.emergency_contact_name || '',
+        emergency_contact_phone: camper.emergency_contact_phone || '',
+        medical_alerts: camper.medical_alerts || '',
+    }
+}
 
 export default function ParentDashboard() {
     const { user } = useAuth()
     const [dashboard, setDashboard] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [message, setMessage] = useState('')
+    const [editingId, setEditingId] = useState(null)
+    const [editForm, setEditForm] = useState(null)
+    const [savingId, setSavingId] = useState(null)
+    const [deletingId, setDeletingId] = useState(null)
 
     const firstName = user?.full_name?.split(' ')[0] || 'Parent'
     const dateStr = new Date().toLocaleDateString('en-US', {
@@ -231,13 +384,105 @@ export default function ParentDashboard() {
         month: 'long',
         day: 'numeric',
     })
+    const today = new Date().toISOString().slice(0, 10)
 
     useEffect(() => {
-        api.get('/parent/dashboard')
-            .then((res) => setDashboard(res.data.data))
-            .catch((err) => setError(err.response?.data?.message || 'Could not load parent dashboard'))
-            .finally(() => setLoading(false))
+        loadDashboard()
     }, [])
+
+    async function loadDashboard() {
+        setLoading(true)
+        setError('')
+        try {
+            const res = await api.get('/parent/dashboard')
+            setDashboard(res.data.data)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not load parent dashboard')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    function startEdit(camper) {
+        setMessage('')
+        setError('')
+        setEditingId(camper.id)
+        setEditForm(camperToForm(camper))
+    }
+
+    function cancelEdit() {
+        setEditingId(null)
+        setEditForm(null)
+    }
+
+    function updateEdit(field, value) {
+        setEditForm((prev) => ({ ...prev, [field]: value }))
+    }
+
+    function replaceCamper(updatedCamper) {
+        setDashboard((prev) => ({
+            ...prev,
+            campers: (prev?.campers || []).map((camper) => (
+                camper.id === updatedCamper.id ? updatedCamper : camper
+            )),
+        }))
+    }
+
+    function removeCamper(camperId) {
+        setDashboard((prev) => {
+            const campers = (prev?.campers || []).filter((camper) => camper.id !== camperId)
+            return {
+                ...prev,
+                campers,
+                campers_count: campers.length,
+            }
+        })
+    }
+
+    async function saveCamper(camperId) {
+        if (!editForm) return
+        setMessage('')
+        setError('')
+        setSavingId(camperId)
+        try {
+            const payload = {
+                ...editForm,
+                full_name: editForm.full_name.trim(),
+                emergency_contact_name: editForm.emergency_contact_name.trim(),
+                emergency_contact_phone: editForm.emergency_contact_phone.trim(),
+                medical_alerts: editForm.medical_alerts.trim(),
+            }
+            const res = await api.put(`/parent/campers/${camperId}`, payload)
+            replaceCamper(res.data.data)
+            setMessage(res.data.message || 'Camper profile updated')
+            cancelEdit()
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not update camper profile')
+        } finally {
+            setSavingId(null)
+        }
+    }
+
+    async function deleteCamper(camper) {
+        const confirmed = window.confirm(
+            `Remove ${camper.full_name}? This will delete the camper profile from your account.`
+        )
+        if (!confirmed) return
+
+        setMessage('')
+        setError('')
+        setDeletingId(camper.id)
+        try {
+            const res = await api.delete(`/parent/campers/${camper.id}`)
+            removeCamper(camper.id)
+            if (editingId === camper.id) cancelEdit()
+            setMessage(res.data.message || 'Camper profile removed')
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not remove camper profile')
+        } finally {
+            setDeletingId(null)
+        }
+    }
 
     const campers = dashboard?.campers || []
     const campersCount = dashboard?.campers_count ?? campers.length
@@ -271,9 +516,15 @@ export default function ParentDashboard() {
                         </Link>
                     </div>
 
-                    {error && <div className="error-state">{error}</div>}
+                    {message && <div className="message success">{message}</div>}
+                    {error && <div className="message error">{error}</div>}
 
-                    {!error && (
+                    {!error && !dashboard ? (
+                        <div className="empty-state">
+                            <strong>Dashboard unavailable.</strong>
+                            Refresh the page and try again.
+                        </div>
+                    ) : (
                         <>
                             <div className="parent-stats">
                                 <div className="stat-card featured">
@@ -326,11 +577,114 @@ export default function ParentDashboard() {
                                             <div>
                                                 <div className="camper-name">{camper.full_name}</div>
                                                 <div className="camper-meta">Date of birth: {camper.date_of_birth}</div>
+                                                {camper.medical_alerts && (
+                                                    <div className="camper-meta">Medical alerts: {camper.medical_alerts}</div>
+                                                )}
                                             </div>
                                             <div className="camper-meta">Gender: {camper.gender || 'Not set'}</div>
                                             <div className="camper-meta">
-                                                Emergency: {camper.emergency_contact_name} - {camper.emergency_contact_phone}
+                                                Emergency: {camper.emergency_contact_name || 'Not set'} - {camper.emergency_contact_phone || 'Not set'}
                                             </div>
+                                            <div className="camper-actions">
+                                                <button
+                                                    type="button"
+                                                    className="small-btn"
+                                                    onClick={() => startEdit(camper)}
+                                                    disabled={savingId === camper.id || deletingId === camper.id}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="danger-btn"
+                                                    onClick={() => deleteCamper(camper)}
+                                                    disabled={savingId === camper.id || deletingId === camper.id}
+                                                >
+                                                    {deletingId === camper.id ? 'Deleting...' : 'Delete'}
+                                                </button>
+                                            </div>
+
+                                            {editingId === camper.id && editForm && (
+                                                <div className="edit-panel">
+                                                    <div className="edit-title">Edit camper profile</div>
+                                                    <div className="edit-grid">
+                                                        <div className="edit-field">
+                                                            <label className="edit-label">Full name</label>
+                                                            <input
+                                                                className="edit-input"
+                                                                value={editForm.full_name}
+                                                                onChange={(e) => updateEdit('full_name', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="edit-field">
+                                                            <label className="edit-label">Date of birth</label>
+                                                            <input
+                                                                className="edit-input"
+                                                                type="date"
+                                                                max={today}
+                                                                value={editForm.date_of_birth}
+                                                                onChange={(e) => updateEdit('date_of_birth', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="edit-field">
+                                                            <label className="edit-label">Gender</label>
+                                                            <select
+                                                                className="edit-select"
+                                                                value={editForm.gender}
+                                                                onChange={(e) => updateEdit('gender', e.target.value)}
+                                                            >
+                                                                <option value="">Select gender</option>
+                                                                <option value="female">Female</option>
+                                                                <option value="male">Male</option>
+                                                                <option value="other">Other</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="edit-field">
+                                                            <label className="edit-label">Emergency phone</label>
+                                                            <input
+                                                                className="edit-input"
+                                                                value={editForm.emergency_contact_phone}
+                                                                onChange={(e) => updateEdit('emergency_contact_phone', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="edit-field full">
+                                                            <label className="edit-label">Emergency contact name</label>
+                                                            <input
+                                                                className="edit-input"
+                                                                value={editForm.emergency_contact_name}
+                                                                onChange={(e) => updateEdit('emergency_contact_name', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="edit-field full">
+                                                            <label className="edit-label">Medical alerts</label>
+                                                            <textarea
+                                                                className="edit-textarea"
+                                                                value={editForm.medical_alerts}
+                                                                onChange={(e) => updateEdit('medical_alerts', e.target.value)}
+                                                                placeholder="Optional allergies, medication, or notes"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="edit-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="ghost-btn"
+                                                            onClick={cancelEdit}
+                                                            disabled={savingId === camper.id}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="small-btn"
+                                                            onClick={() => saveCamper(camper.id)}
+                                                            disabled={savingId === camper.id}
+                                                        >
+                                                            {savingId === camper.id ? 'Saving...' : 'Save changes'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 )}

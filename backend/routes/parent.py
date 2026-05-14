@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app import db
@@ -50,6 +50,30 @@ def payment_with_camper(payment):
     return data
 
 
+def cancellation_metadata(enrollment):
+    session = enrollment.session
+    if not session:
+        return {
+            'can_cancel': False,
+            'cancellation_deadline': None,
+        }
+
+    today = datetime.utcnow().date()
+    deadline = session.start_date - timedelta(days=7)
+    return {
+        'can_cancel': enrollment.status == 'active' and today <= deadline,
+        'cancellation_deadline': str(deadline),
+    }
+
+
+def enrollment_with_details(enrollment):
+    item = enrollment.to_dict()
+    item['camper_name'] = enrollment.camper.full_name if enrollment.camper else None
+    item['session'] = enrollment.session.to_dict() if getattr(enrollment, 'session', None) else None
+    item.update(cancellation_metadata(enrollment))
+    return item
+
+
 def session_with_availability(session, parent_id=None):
     active_count = Enrollment.query.filter_by(session_id=session.id, status='active').count()
     data = session.to_dict()
@@ -68,8 +92,10 @@ def session_with_availability(session, parent_id=None):
                 Enrollment.camper_id.in_(parent_camper_ids)
             ).all()
             data['enrolled_camper_ids'] = [e.camper_id for e in parent_enrollments]
+            data['parent_enrollments'] = [enrollment_with_details(e) for e in parent_enrollments]
         else:
             data['enrolled_camper_ids'] = []
+            data['parent_enrollments'] = []
     return data
 
 
@@ -152,12 +178,7 @@ def list_enrollments():
         .order_by(Enrollment.enrolled_at.desc())
         .all()
     )
-    data = []
-    for enrollment in enrollments:
-        item = enrollment.to_dict()
-        item['camper_name'] = enrollment.camper.full_name if enrollment.camper else None
-        item['session'] = enrollment.session.to_dict() if getattr(enrollment, 'session', None) else None
-        data.append(item)
+    data = [enrollment_with_details(enrollment) for enrollment in enrollments]
     return ok(data)
 
 
@@ -206,6 +227,43 @@ def create_enrollment():
     item['camper_name'] = camper.full_name
     item['session'] = session.to_dict()
     return ok(item, 'Camper enrolled in session', 201)
+
+
+@parent_bp.delete('/enrollments/<int:enrollment_id>')
+@role_required('parent')
+def cancel_enrollment(enrollment_id):
+    user = current_user()
+    enrollment = (
+        Enrollment.query
+        .join(Camper, Enrollment.camper_id == Camper.id)
+        .filter(
+            Enrollment.id == enrollment_id,
+            Camper.parent_id == user.id
+        )
+        .first()
+    )
+
+    if not enrollment:
+        return fail('Enrollment not found', 404)
+
+    if enrollment.status != 'active':
+        return fail('Enrollment is already cancelled')
+
+    session = enrollment.session
+    if not session:
+        return fail('Session not found', 404)
+
+    deadline = session.start_date - timedelta(days=7)
+    today = datetime.utcnow().date()
+    if today > deadline:
+        return fail('Registration can only be cancelled at least 7 days before the session start date', 403)
+
+    enrollment.status = 'cancelled'
+    enrollment.cancelled_at = datetime.utcnow()
+    enrollment.group_id = None
+    db.session.commit()
+
+    return ok(enrollment_with_details(enrollment), 'Enrollment cancelled successfully')
 
 
 @parent_bp.put('/campers/<int:camper_id>')

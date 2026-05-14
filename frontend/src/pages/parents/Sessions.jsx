@@ -99,6 +99,52 @@ const styles = `
     font-size: 12px;
   }
 
+  .enrollment-list {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+
+  .enrollment-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #e8d5b5;
+    border-radius: 10px;
+    background: #fffdf8;
+  }
+
+  .enrollment-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2c1810;
+  }
+
+  .enrollment-note {
+    margin-top: 3px;
+    font-size: 11px;
+    color: #8a7a65;
+  }
+
+  .cancel-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    background: #fff;
+    color: #b3261e;
+    border: 1px solid #efc4bf;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .cancel-btn:hover { background: #fdecea; }
+  .cancel-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
   .enroll-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -170,7 +216,8 @@ const styles = `
       padding: 28px 0;
     }
     .sessions-grid { grid-template-columns: 1fr; }
-    .enroll-row { grid-template-columns: 1fr; }
+    .enroll-row,
+    .enrollment-row { grid-template-columns: 1fr; }
   }
 `
 
@@ -180,6 +227,7 @@ export default function Sessions() {
     const [selectedCampers, setSelectedCampers] = useState({})
     const [loading, setLoading] = useState(true)
     const [savingSessionId, setSavingSessionId] = useState(null)
+    const [cancellingEnrollmentId, setCancellingEnrollmentId] = useState(null)
     const [message, setMessage] = useState('')
     const [error, setError] = useState('')
 
@@ -233,6 +281,26 @@ export default function Sessions() {
         }
     }
 
+    async function cancelEnrollment(enrollment) {
+        const confirmed = window.confirm(
+            `Cancel ${enrollment.camper_name}'s enrollment? This is only allowed at least 7 days before the session starts.`
+        )
+        if (!confirmed) return
+
+        setMessage('')
+        setError('')
+        setCancellingEnrollmentId(enrollment.id)
+        try {
+            const res = await api.delete(`/parent/enrollments/${enrollment.id}`)
+            setMessage(res.data.message || 'Enrollment cancelled successfully.')
+            await load()
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not cancel enrollment')
+        } finally {
+            setCancellingEnrollmentId(null)
+        }
+    }
+
     return (
         <>
             <style>{styles}</style>
@@ -240,7 +308,7 @@ export default function Sessions() {
                 <Navbar />
                 <main className="page-body">
                     <h1 className="page-title">Available Sessions</h1>
-                    <p className="page-subtitle">Review camp sessions and enroll one of your registered campers.</p>
+                    <p className="page-subtitle">Review camp sessions, enroll campers, or cancel eligible enrollments.</p>
 
                     {message && <div className="message success">{message}</div>}
                     {error && <div className="message error">{error}</div>}
@@ -252,9 +320,12 @@ export default function Sessions() {
                     ) : (
                         <div className="sessions-grid">
                             {sessions.map((session) => {
-                                const enrolledNames = (session.enrolled_camper_ids || [])
-                                    .map((id) => camperById[String(id)]?.full_name)
-                                    .filter(Boolean)
+                                const activeEnrollments = session.parent_enrollments || []
+                                const enrolledNames = activeEnrollments.length > 0
+                                    ? activeEnrollments.map((enrollment) => enrollment.camper_name).filter(Boolean)
+                                    : (session.enrolled_camper_ids || [])
+                                        .map((id) => camperById[String(id)]?.full_name)
+                                        .filter(Boolean)
 
                                 return (
                                     <article key={session.id} className="session-card">
@@ -276,7 +347,30 @@ export default function Sessions() {
                                                     ))}
                                             </div>
 
-                                            {enrolledNames.length > 0 && (
+                                            {activeEnrollments.length > 0 ? (
+                                                <div className="enrollment-list">
+                                                    {activeEnrollments.map((enrollment) => (
+                                                        <div key={enrollment.id} className="enrollment-row">
+                                                            <div>
+                                                                <div className="enrollment-name">Enrolled: {enrollment.camper_name}</div>
+                                                                <div className="enrollment-note">
+                                                                    {enrollment.can_cancel
+                                                                        ? `Cancellation allowed until ${enrollment.cancellation_deadline}.`
+                                                                        : 'Cancellation deadline has passed.'}
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="cancel-btn"
+                                                                onClick={() => cancelEnrollment(enrollment)}
+                                                                disabled={!enrollment.can_cancel || cancellingEnrollmentId === enrollment.id}
+                                                            >
+                                                                {cancellingEnrollmentId === enrollment.id ? 'Cancelling...' : 'Cancel enrollment'}
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : enrolledNames.length > 0 && (
                                                 <div className="status">Enrolled: {enrolledNames.join(', ')}</div>
                                             )}
 
