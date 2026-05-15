@@ -37,6 +37,8 @@ class ActivityProgram(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=False)
     name       = db.Column(db.String(100), nullable=False)
     fee        = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
+    min_age    = db.Column(db.Integer, nullable=True)
+    max_age    = db.Column(db.Integer, nullable=True)
 
     def to_dict(self):
         return {
@@ -44,5 +46,7 @@ class ActivityProgram(db.Model):
             'session_id': self.session_id,
             'name':       self.name,
             'fee':        float(self.fee),
+            'min_age':    self.min_age,
+            'max_age':    self.max_age,
         }
 

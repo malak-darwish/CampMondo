@@ -139,6 +139,17 @@ const styles = `
     font-weight: 600;
   }
 
+  .activity-age {
+    color: #8a7a65;
+    font-size: 11px;
+  }
+
+  .activity-note {
+    color: #8a7a65;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
   .fee-preview,
   .fee-breakdown {
     margin: 10px 0 16px;
@@ -280,6 +291,47 @@ function money(value) {
     return number.toFixed(2)
 }
 
+function ageRangeLabel(activity) {
+    if (activity.min_age != null && activity.max_age != null) return `ages ${activity.min_age}-${activity.max_age}`
+    if (activity.min_age != null) return `ages ${activity.min_age}+`
+    if (activity.max_age != null) return `up to age ${activity.max_age}`
+    return 'all ages'
+}
+
+function calculateAgeOnDate(dateOfBirth, referenceDate) {
+    if (!dateOfBirth || !referenceDate) return null
+
+    const dob = new Date(dateOfBirth)
+    const ref = new Date(referenceDate)
+    if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime())) return null
+
+    let age = ref.getFullYear() - dob.getFullYear()
+    const birthdayThisYear = new Date(ref.getFullYear(), dob.getMonth(), dob.getDate())
+    if (ref < birthdayThisYear) age -= 1
+    return age
+}
+
+function activityAllowedForCamper(activity, camper, session) {
+    if (!camper) return false
+
+    const age = calculateAgeOnDate(camper.date_of_birth, session.start_date)
+    if (age == null) return false
+    if (activity.min_age != null && age < Number(activity.min_age)) return false
+    if (activity.max_age != null && age > Number(activity.max_age)) return false
+    return true
+}
+
+function eligibleActivitiesForSession(session, camper) {
+    const activities = session.activities || []
+    if (!camper) return []
+    return activities.filter((activity) => activityAllowedForCamper(activity, camper, session))
+}
+
+function filterActivityIdsForCamper(session, camper, activityIds) {
+    const allowedIds = new Set(eligibleActivitiesForSession(session, camper).map((activity) => String(activity.id)))
+    return (activityIds || []).filter((activityId) => allowedIds.has(String(activityId)))
+}
+
 function feePreview(session, selectedActivityIds) {
     const sessionFee = Number(session.enrollment_fee || 0)
     const selectedSet = new Set((selectedActivityIds || []).map(String))
@@ -336,10 +388,23 @@ export default function Sessions() {
         })
     }
 
+    function handleCamperChange(session, camperId) {
+        setSelectedCampers((prev) => ({ ...prev, [session.id]: camperId }))
+        setSelectedActivities((prev) => {
+            const camper = camperById[String(camperId)]
+            return {
+                ...prev,
+                [session.id]: filterActivityIdsForCamper(session, camper, prev[session.id] || []),
+            }
+        })
+    }
+
     async function enroll(session) {
         const sessionId = session.id
         const camperId = selectedCampers[sessionId]
-        const activityIds = selectedActivities[sessionId] || []
+        const camper = camperById[String(camperId)]
+        const eligibleActivities = eligibleActivitiesForSession(session, camper)
+        const activityIds = filterActivityIdsForCamper(session, camper, selectedActivities[sessionId] || [])
         setMessage('')
         setError('')
 
@@ -348,8 +413,8 @@ export default function Sessions() {
             return
         }
 
-        if ((session.activities || []).length > 0 && activityIds.length === 0) {
-            setError('Select at least one activity program before enrolling')
+        if (eligibleActivities.length > 0 && activityIds.length === 0) {
+            setError('Select at least one age-eligible activity program before enrolling')
             return
         }
 
@@ -418,8 +483,10 @@ export default function Sessions() {
                                     : (session.enrolled_camper_ids || [])
                                         .map((id) => camperById[String(id)]?.full_name)
                                         .filter(Boolean)
-                                const chosenActivityIds = selectedActivities[session.id] || []
-                                const preview = feePreview(session, chosenActivityIds)
+                                const selectedCamper = camperById[String(selectedCampers[session.id] || '')]
+                                const eligibleActivities = eligibleActivitiesForSession(session, selectedCamper)
+                                const chosenActivityIds = filterActivityIdsForCamper(session, selectedCamper, selectedActivities[session.id] || [])
+                                const preview = feePreview({ ...session, activities: eligibleActivities }, chosenActivityIds)
 
                                 return (
                                     <article key={session.id} className="session-card">
@@ -436,7 +503,7 @@ export default function Sessions() {
                                                     ? <span className="activity-pill">No activities listed</span>
                                                     : session.activities.map((activity) => (
                                                         <span key={activity.id} className="activity-pill">
-                                                            {activity.name} (${money(activity.fee)})
+                                                            {activity.name} (${money(activity.fee)}) · {ageRangeLabel(activity)}
                                                         </span>
                                                     ))}
                                             </div>
@@ -452,7 +519,7 @@ export default function Sessions() {
                                                                         ? <span className="activity-pill">No selected activities</span>
                                                                         : enrollment.selected_activities.map((activity) => (
                                                                             <span key={activity.id} className="activity-pill">
-                                                                                {activity.name} (${money(activity.fee)})
+                                                                                {activity.name} (${money(activity.fee)}) · {ageRangeLabel(activity)}
                                                                             </span>
                                                                         ))}
                                                                 </div>
@@ -488,8 +555,12 @@ export default function Sessions() {
                                                 <>
                                                     {(session.activities || []).length > 0 && (
                                                         <div className="activity-picker">
-                                                            <div className="activity-picker-title">Select activity programs</div>
-                                                            {session.activities.map((activity) => {
+                                                            <div className="activity-picker-title">Select age-eligible activity programs</div>
+                                                            {!selectedCamper ? (
+                                                                <div className="activity-note">Choose a camper first to show only activities allowed for that camper's age.</div>
+                                                            ) : eligibleActivities.length === 0 ? (
+                                                                <div className="activity-note">No activities match this camper's age for this session. You can still enroll for the session only.</div>
+                                                            ) : eligibleActivities.map((activity) => {
                                                                 const checked = chosenActivityIds.map(String).includes(String(activity.id))
                                                                 return (
                                                                     <label key={activity.id} className="activity-option">
@@ -498,7 +569,7 @@ export default function Sessions() {
                                                                             checked={checked}
                                                                             onChange={() => toggleActivity(session.id, activity.id)}
                                                                         />
-                                                                        <span>{activity.name}</span>
+                                                                        <span>{activity.name} <span className="activity-age">({ageRangeLabel(activity)})</span></span>
                                                                         <span className="activity-fee">${money(activity.fee)}</span>
                                                                     </label>
                                                                 )
@@ -516,7 +587,7 @@ export default function Sessions() {
                                                         <select
                                                             className="form-select"
                                                             value={selectedCampers[session.id] || ''}
-                                                            onChange={(e) => setSelectedCampers({ ...selectedCampers, [session.id]: e.target.value })}
+                                                            onChange={(e) => handleCamperChange(session, e.target.value)}
                                                             disabled={campers.length === 0}
                                                         >
                                                             <option value="">{campers.length === 0 ? 'Register a camper first' : 'Choose camper'}</option>

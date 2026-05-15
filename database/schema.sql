@@ -79,6 +79,8 @@ CREATE TABLE activity_programs (
     session_id       INT           NOT NULL,
     name             VARCHAR(100)  NOT NULL,
     fee              DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    min_age          INT           NULL,
+    max_age          INT           NULL,
 
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
@@ -293,10 +295,10 @@ INSERT INTO sessions (id, name, start_date, end_date, max_capacity, enrollment_f
 (2, 'Summer Session B', '2025-08-01', '2025-08-31', 20, 120.00, 1);
 
 -- Activity Programs
-INSERT INTO activity_programs (id, session_id, name, fee) VALUES
-(1, 1, 'Swimming',      20.00),
-(2, 1, 'Arts & Crafts', 15.00),
-(3, 2, 'Football',      25.00);
+INSERT INTO activity_programs (id, session_id, name, fee, min_age, max_age) VALUES
+(1, 1, 'Swimming',      20.00, 8, 16),
+(2, 1, 'Arts & Crafts', 15.00, 5, 16),
+(3, 2, 'Football',      25.00, 7, 15);
 
 -- Groups
 INSERT INTO groups (id, session_id, name, staff_id) VALUES

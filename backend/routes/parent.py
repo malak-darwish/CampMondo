@@ -39,6 +39,27 @@ def float_money(value):
     return float(decimal_money(value))
 
 
+def calculate_age_on_date(date_of_birth, reference_date):
+    if not date_of_birth or not reference_date:
+        return None
+    return (
+        reference_date.year
+        - date_of_birth.year
+        - ((reference_date.month, reference_date.day) < (date_of_birth.month, date_of_birth.day))
+    )
+
+
+def activity_allowed_for_camper(activity, camper, reference_date):
+    age = calculate_age_on_date(camper.date_of_birth, reference_date)
+    if age is None:
+        return False
+    if activity.min_age is not None and age < activity.min_age:
+        return False
+    if activity.max_age is not None and age > activity.max_age:
+        return False
+    return True
+
+
 def camper_with_contact(camper):
     data = camper.to_dict()
     contact = camper.emergency_contacts[0] if camper.emergency_contacts else None
@@ -173,19 +194,31 @@ def parse_activity_ids(raw_activity_ids):
     return parsed
 
 
-def validate_selected_activities(session, raw_activity_ids):
+def validate_selected_activities(session, raw_activity_ids, camper=None):
     activity_ids = parse_activity_ids(raw_activity_ids)
     session_activities = list(session.activity_programs or [])
     session_activity_ids = {activity.id for activity in session_activities}
-
-    if session_activity_ids and not activity_ids:
-        raise ValueError('Select at least one activity program')
 
     invalid_ids = [activity_id for activity_id in activity_ids if activity_id not in session_activity_ids]
     if invalid_ids:
         raise ValueError('One or more selected activities do not belong to this session')
 
-    return [activity for activity in session_activities if activity.id in activity_ids]
+    eligible_activities = session_activities
+    if camper:
+        eligible_activities = [
+            activity for activity in session_activities
+            if activity_allowed_for_camper(activity, camper, session.start_date)
+        ]
+
+    eligible_activity_ids = {activity.id for activity in eligible_activities}
+    if eligible_activity_ids and not activity_ids:
+        raise ValueError('Select at least one age-eligible activity program')
+
+    ineligible_ids = [activity_id for activity_id in activity_ids if activity_id not in eligible_activity_ids]
+    if ineligible_ids:
+        raise ValueError('One or more selected activities are not available for this camper age')
+
+    return [activity for activity in eligible_activities if activity.id in activity_ids]
 
 
 def replace_enrollment_activities(enrollment, selected_activities):
@@ -328,7 +361,7 @@ def create_enrollment():
         return fail('Session not found', 404)
 
     try:
-        selected_activities = validate_selected_activities(session, data.get('activity_program_ids', data.get('activity_ids')))
+        selected_activities = validate_selected_activities(session, data.get('activity_program_ids', data.get('activity_ids')), camper)
     except ValueError as exc:
         return fail(str(exc))
 

@@ -1,5 +1,5 @@
+import logging
 import secrets
-from chromadb import logger
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 from app import db
@@ -18,6 +18,7 @@ from app.utils.email import send_announcement_notification
 
 
 admin_bp = Blueprint('admin', __name__)
+logger = logging.getLogger(__name__)
 
 
 def fail(message, status=400):
@@ -26,6 +27,26 @@ def fail(message, status=400):
 
 def ok(data=None, message='Success', status=200):
     return jsonify({'success': True, 'data': data, 'message': message}), status
+
+
+def parse_optional_age(value, field_label):
+    if value in (None, ''):
+        return None
+    try:
+        age = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f'{field_label} must be a valid number')
+    if age < 0:
+        raise ValueError(f'{field_label} cannot be negative')
+    return age
+
+
+def parse_activity_age_range(data):
+    min_age = parse_optional_age(data.get('min_age'), 'Minimum age')
+    max_age = parse_optional_age(data.get('max_age'), 'Maximum age')
+    if min_age is not None and max_age is not None and min_age > max_age:
+        raise ValueError('Minimum age cannot be greater than maximum age')
+    return min_age, max_age
 
 
 def payment_details(payment):
@@ -92,10 +113,17 @@ def create_session():
     db.session.flush()
 
     for activity in data.get('activities', []):
+        try:
+            min_age, max_age = parse_activity_age_range(activity)
+        except ValueError as exc:
+            return fail(str(exc))
+
         ap = ActivityProgram(
             session_id = new_session.id,
             name       = activity['name'],
-            fee        = activity.get('fee', 0.00)
+            fee        = activity.get('fee', 0.00),
+            min_age    = min_age,
+            max_age    = max_age
         )
         db.session.add(ap)
 
@@ -152,10 +180,17 @@ def add_session_activity(session_id):
     if not data.get('name'):
         return fail('Activity name is required')
 
+    try:
+        min_age, max_age = parse_activity_age_range(data)
+    except ValueError as exc:
+        return fail(str(exc))
+
     activity = ActivityProgram(
         session_id = session_id,
         name       = data['name'].strip(),
-        fee        = float(data.get('fee', 0.00))
+        fee        = float(data.get('fee', 0.00)),
+        min_age    = min_age,
+        max_age    = max_age
     )
     db.session.add(activity)
     db.session.commit()

@@ -95,6 +95,7 @@ const styles = `
     border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #3a2e1e;
   }
   .activity-chip-fee { color: #3d6b45; font-weight: 600; }
+  .activity-chip-age { color: #8a7a65; font-size: 11px; }
   .activity-chip-del {
     background: none; border: none; cursor: pointer;
     color: #c62828; font-size: 14px; line-height: 1; padding: 0;
@@ -104,6 +105,7 @@ const styles = `
   .activity-add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .activity-add-row .form-input { padding: 7px 11px; font-size: 12px; width: auto; }
   .activity-empty { font-size: 12px; color: #a08c72; font-style: italic; margin-bottom: 12px; }
+  .age-help { font-size: 11px; color: #8a7a65; margin: 0 0 10px; }
 
   .expand-btn {
     background: none; border: none; cursor: pointer;
@@ -114,6 +116,14 @@ const styles = `
 `
 
 const emptyForm = { name: '', start_date: '', end_date: '', max_capacity: '', enrollment_fee: '' }
+const emptyActivityForm = { name: '', fee: '', min_age: '', max_age: '' }
+
+function activityAgeLabel(activity) {
+  if (activity.min_age != null && activity.max_age != null) return `Ages ${activity.min_age}-${activity.max_age}`
+  if (activity.min_age != null) return `Ages ${activity.min_age}+`
+  if (activity.max_age != null) return `Up to age ${activity.max_age}`
+  return 'All ages'
+}
 
 export default function ManageSessions() {
   const [sessions, setSessions]       = useState([])
@@ -127,7 +137,7 @@ export default function ManageSessions() {
   // activities state: { [sessionId]: [...] }
   const [activities, setActivities]   = useState({})
   const [expandedId, setExpandedId]   = useState(null)
-  const [actForm, setActForm]         = useState({ name: '', fee: '' })
+  const [actForm, setActForm]         = useState(emptyActivityForm)
   const [actLoading, setActLoading]   = useState(false)
   const [actError, setActError]       = useState('')
 
@@ -147,7 +157,7 @@ export default function ManageSessions() {
       setExpandedId(null)
     } else {
       setExpandedId(sessionId)
-      setActForm({ name: '', fee: '' })
+      setActForm(emptyActivityForm)
       setActError('')
       if (!activities[sessionId]) loadActivities(sessionId)
     }
@@ -159,9 +169,11 @@ export default function ManageSessions() {
     try {
       await api.post(`/admin/sessions/${sessionId}/activities`, {
         name: actForm.name.trim(),
-        fee:  parseFloat(actForm.fee) || 0
+        fee:  parseFloat(actForm.fee) || 0,
+        min_age: actForm.min_age === '' ? null : Number(actForm.min_age),
+        max_age: actForm.max_age === '' ? null : Number(actForm.max_age)
       })
-      setActForm({ name: '', fee: '' })
+      setActForm(emptyActivityForm)
       loadActivities(sessionId)
     } catch (err) {
       setActError(err.response?.data?.message || 'Failed to add activity')
@@ -339,6 +351,7 @@ export default function ManageSessions() {
                                       <div className="activity-chip" key={a.id}>
                                         <span>{a.name}</span>
                                         <span className="activity-chip-fee">${parseFloat(a.fee).toFixed(2)}</span>
+                                        <span className="activity-chip-age">{activityAgeLabel(a)}</span>
                                         <button className="activity-chip-del" onClick={() => handleDeleteActivity(s.id, a.id)} title="Remove">✕</button>
                                       </div>
                                     ))}
@@ -348,6 +361,7 @@ export default function ManageSessions() {
 
                               {/* add new activity */}
                               {actError && <div style={{ fontSize: 12, color: '#c62828', marginBottom: 8 }}>⚠ {actError}</div>}
+                              <div className="age-help">Leave min/max age empty if the activity is open to all ages.</div>
                               <div className="activity-add-row">
                                 <input
                                   className="form-input"
@@ -363,6 +377,24 @@ export default function ManageSessions() {
                                   value={actForm.fee}
                                   onChange={e => setActForm(p => ({ ...p, fee: e.target.value }))}
                                   style={{ width: 110 }}
+                                />
+                                <input
+                                  className="form-input"
+                                  type="number"
+                                  min="0"
+                                  placeholder="Min age"
+                                  value={actForm.min_age}
+                                  onChange={e => setActForm(p => ({ ...p, min_age: e.target.value }))}
+                                  style={{ width: 100 }}
+                                />
+                                <input
+                                  className="form-input"
+                                  type="number"
+                                  min="0"
+                                  placeholder="Max age"
+                                  value={actForm.max_age}
+                                  onChange={e => setActForm(p => ({ ...p, max_age: e.target.value }))}
+                                  style={{ width: 100 }}
                                 />
                                 <button
                                   className="btn btn-amber btn-sm"
