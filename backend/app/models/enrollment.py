@@ -14,6 +14,7 @@ class Enrollment(db.Model):
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
     session = db.relationship('Session', backref='enrollments', lazy=True)
+    group = db.relationship('Group', lazy=True)
 
     activities = db.relationship(
         'EnrollmentActivity',

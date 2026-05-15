@@ -120,7 +120,9 @@ def activity_details(activity):
 @staff_bp.get('/campers')
 @role_required('staff')
 def list_staff_campers():
+
     group_ids = staff_group_ids()
+
     if not group_ids:
         return ok([])
 
@@ -128,7 +130,37 @@ def list_staff_campers():
         Enrollment.group_id.in_(group_ids),
         Enrollment.status == 'active'
     ).all()
-    return ok([camper_details(e.camper, e) for e in enrollments if e.camper])
+
+    campers_data = []
+
+    for enrollment in enrollments:
+
+        camper = enrollment.camper
+
+        if not camper:
+            continue
+
+        camper_data = camper.to_dict()
+
+        camper_data['session'] = (
+            enrollment.session.to_dict()
+            if enrollment.session else None
+        )
+
+        camper_data['group'] = (
+            enrollment.group.to_dict()
+            if enrollment.group else None
+        )
+
+        camper_data['activities'] = [
+            ea.activity.to_dict()
+            for ea in enrollment.activities
+            if ea.activity
+        ]
+
+        campers_data.append(camper_data)
+
+    return ok(campers_data)
 
 
 @staff_bp.get('/groups')

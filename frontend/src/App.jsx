@@ -31,6 +31,9 @@ import IncidentReport from './pages/staff/IncidentReport'
 import ActivityLog from './pages/staff/ActivityLog'
 import StaffAnnouncements from './pages/staff/StaffAnnouncements'
 
+import ManageCampers from './pages/admin/ManageCampers'
+import ViewCampers from './pages/staff/ViewCampers'
+
 export default function App() {
     return (
         <AuthProvider>
@@ -102,6 +105,19 @@ export default function App() {
                             <StaffAnnouncements />
                         </ProtectedRoute>
                     } />   
+                                        {/* Admin */}
+                    <Route path='/admin/campers' element={
+                        <ProtectedRoute roles={['admin']}>
+                            <ManageCampers />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Staff */}
+                    <Route path='/staff/campers' element={
+                        <ProtectedRoute roles={['staff']}>
+                            <ViewCampers  />
+                        </ProtectedRoute>
+                    } />
                     {/* Parent routes - guarded */}
                     <Route path='/parent' element={
                         <ProtectedRoute roles={['parent']}><Navigate to='/parent/dashboard' replace /></ProtectedRoute>

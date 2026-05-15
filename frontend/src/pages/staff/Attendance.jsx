@@ -254,7 +254,7 @@ export default function Attendance() {
   };
 
   // FR 3.6 — summary counts for today
-  const groupCampers = campers.filter(c => !autoGroupId || c.group_id == autoGroupId);
+const groupCampers = campers.filter(c => !autoGroupId || c.group?.id == autoGroupId);
 const todayRecords = records.filter(r => r.date === today && (!autoGroupId || r.group_id == autoGroupId));
 const presentCount = insideCamp.filter(r => !autoGroupId || r.group_id == autoGroupId).length;
 const checkedOutCount = todayRecords.filter(r => r.check_out_time).length;
@@ -330,10 +330,10 @@ const exportToExcel = () => {
                 Campers in Group
               </div>
               <div className="camper-list">
-                {campers.filter(c => !autoGroupId || c.group_id == autoGroupId).length === 0
+                {campers.filter(c => !autoGroupId || c.group?.id == autoGroupId).length === 0
                   ? <div className="no-campers">No campers in this group.</div>
                   : campers
-                      .filter(c => !autoGroupId || c.group_id == autoGroupId)
+                      .filter(c => !autoGroupId || c.group?.id == autoGroupId)
                       .map(c => (
                         <div
                           key={c.id}

@@ -374,24 +374,50 @@ def delete_staff(staff_id):
 @admin_bp.get('/campers')
 @role_required('admin')
 def get_campers():
+
     session_id = request.args.get('session_id', type=int)
+    group_id   = request.args.get('group_id', type=int)
+
+    query = Enrollment.query.filter_by(status='active')
 
     if session_id:
-        # Only campers with an active enrollment in this session.
-        enrollments = Enrollment.query.filter_by(
-            session_id=session_id, status='active'
-        ).all()
-        camper_ids = list({e.camper_id for e in enrollments})
-        if not camper_ids:
-            return ok([])
-        campers = (Camper.query
-                   .filter(Camper.id.in_(camper_ids))
-                   .order_by(Camper.full_name.asc())
-                   .all())
-    else:
-        campers = Camper.query.order_by(Camper.full_name.asc()).all()
+        query = query.filter_by(session_id=session_id)
 
-    return ok([c.to_dict() for c in campers])
+    if group_id:
+        query = query.filter_by(group_id=group_id)
+
+    enrollments = query.all()
+
+    campers_data = []
+
+    for enrollment in enrollments:
+
+        camper = enrollment.camper
+
+        if not camper:
+            continue
+
+        camper_data = camper.to_dict()
+
+        camper_data['session'] = (
+            enrollment.session.to_dict()
+            if enrollment.session else None
+        )
+
+        camper_data['group'] = (
+            enrollment.group.to_dict()
+            if enrollment.group else None
+        )
+
+        camper_data['activities'] = [
+            ea.activity.to_dict()
+            for ea in enrollment.activities
+            if ea.activity
+        ]
+
+        campers_data.append(camper_data)
+
+    return ok(campers_data)
 
 
 # ═══════════════════════════════════════════════════════════

@@ -58,12 +58,14 @@ def create_app():
     from routes.admin import admin_bp
     from routes.staff import staff_bp
     from routes.reports import reports_bp
+    
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(parent_bp, url_prefix="/api/parent")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(reports_bp, url_prefix="/api/admin/reports") 
     app.register_blueprint(staff_bp, url_prefix="/api/staff")
+
 
     @app.get("/api/health")
     def health():

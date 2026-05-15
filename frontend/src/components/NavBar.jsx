@@ -138,6 +138,7 @@ const adminLinks = [
     { href: '/admin/announcements', label: 'Announcements' },
     { href: '/admin/reports',       label: 'Reports' },
     { href: '/admin/assistant', label: 'AI Assistant' },
+    { href: '/admin/campers', label: 'Campers' },
 ]
 
 const staffLinks = [
@@ -146,6 +147,7 @@ const staffLinks = [
     { href: '/staff/incidents',  label: 'Incidents' },
     { href: '/staff/activity-log', label: 'Activity Log' },
     { href: '/staff/announcements', label: 'Announcements' },
+    { href: '/staff/campers', label: 'Campers' },
 ]
 
 const parentLinks = [

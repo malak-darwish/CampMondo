@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from app.models.user import User
 from app import db
 
 
@@ -17,13 +19,40 @@ class Camper(db.Model):
     enrollments        = db.relationship('Enrollment', backref='camper', lazy=True)
 
     def to_dict(self):
+        from datetime import date
+
+        age = None
+        if self.date_of_birth:
+            today = date.today()
+            age = (
+                today.year
+                - self.date_of_birth.year
+                - (
+                    (today.month, today.day)
+                    < (self.date_of_birth.month, self.date_of_birth.day)
+                )
+            )
+
+        parent = User.query.get(self.parent_id)
+
         return {
-            'id':             self.id,
-            'parent_id':      self.parent_id,
-            'full_name':      self.full_name,
-            'date_of_birth':  str(self.date_of_birth),
-            'gender':         self.gender,
+            'id': self.id,
+            'parent_id': self.parent_id,
+
+            'parent_name': parent.full_name if parent else None,
+            'parent_email': parent.email if parent else None,
+            'parent_phone': parent.phone_number if parent else None,
+
+            'full_name': self.full_name,
+            'date_of_birth': str(self.date_of_birth),
+            'age': age,
+            'gender': self.gender,
             'medical_alerts': self.medical_alerts,
+
+            'emergency_contacts': [
+                contact.to_dict()
+                for contact in self.emergency_contacts
+            ],
         }
 
 
