@@ -102,7 +102,6 @@ def _frontend_url(path: str = '') -> str:
 #  TEMPLATED EMAILS
 #  Each wrapped in try/except so the caller never crashes.
 # ───────────────────────────────────────────────────────────
-
 def send_incident_notification(parent_email, parent_name, camper_name,
                                 incident_date, description, session_name) -> bool:
     """Sent to a parent when staff files an incident report for their child."""
@@ -224,7 +223,49 @@ def send_parent_registration_email(user) -> bool:
         print(f'[EMAIL HELPER CRASHED] send_parent_registration_email: {exc}')
         return False
 
+def send_camper_registration_email(parent_email, parent_name, camper_name,
+                                    date_of_birth, gender, medical_alerts=None) -> bool:
+    """Sent to a parent when they create a new camper profile."""
+    try:
+        subject = f'Camper Profile Created – {camper_name}'
+        body = (
+            f'Hi {parent_name},\n\n'
+            f'The camper profile for {camper_name} has been created successfully.\n\n'
+            f'Date of Birth: {date_of_birth}\n'
+            f'Gender: {gender.title()}\n\n'
+            f'You can now enroll {camper_name} in an upcoming session.\n\n'
+            f'— The CampMondo Team'
+        )
 
+        safe_parent  = escape(parent_name or 'Parent')
+        safe_camper  = escape(camper_name or '')
+        safe_dob     = escape(str(date_of_birth))
+        safe_gender  = escape(gender.title() if gender else '')
+        safe_alerts  = escape(medical_alerts or 'None')
+
+        html_inner = (
+            f'<h2 style="margin:0 0 12px;color:#2c1810;font-family:Georgia,serif;">'
+            f'Camper Profile Created!</h2>'
+            f'<p>Hi {safe_parent},</p>'
+            f'<p>The camper profile for <strong>{safe_camper}</strong> has been created successfully.</p>'
+            f'<table cellpadding="10" cellspacing="0" style="background:#f5f0e8;'
+            f'border-radius:8px;margin:20px 0;width:100%;">'
+            f'<tr><td><strong>Full Name:</strong></td><td>{safe_camper}</td></tr>'
+            f'<tr><td><strong>Date of Birth:</strong></td><td>{safe_dob}</td></tr>'
+            f'<tr><td><strong>Gender:</strong></td><td>{safe_gender}</td></tr>'
+            f'<tr><td><strong>Medical Alerts:</strong></td>'
+            f'<td style="color:{"#c62828" if medical_alerts else "#3d6b45"};font-weight:600;">'
+            f'{safe_alerts}</td></tr>'
+            f'</table>'
+            f'<p>You can now enroll <strong>{safe_camper}</strong> in an upcoming session.</p>'
+            f'<p style="margin-top:24px;">— The CampMondo Team</p>'
+        )
+
+        return send_email(parent_email, subject, body, html=_wrap_html(html_inner))
+    except Exception as exc:
+        logger.error(f'send_camper_registration_email crashed: {exc}')
+        print(f'[EMAIL HELPER CRASHED] send_camper_registration_email: {exc}')
+        return False
 def send_payment_submitted_email(user, payment, enrollment=None) -> bool:
     """Sent when a parent submits a payment."""
     try:
@@ -289,6 +330,49 @@ def send_payment_submitted_email(user, payment, enrollment=None) -> bool:
         print(f'[EMAIL HELPER CRASHED] send_payment_submitted_email: {exc}')
         return False
 
+def send_enrollment_confirmation(parent_email, parent_name, camper_name,
+                                  session_name, session_start, session_end,
+                                  enrollment_fee) -> bool:
+    """Sent to a parent when their camper is successfully enrolled in a session."""
+    try:
+        subject = f'Enrollment Confirmed – {camper_name} at CampMondo'
+        body = (
+            f'Hi {parent_name},\n\n'
+            f'{camper_name} has been successfully enrolled in {session_name}.\n\n'
+            f'Session dates: {session_start} – {session_end}\n'
+            f'Enrollment fee: ${enrollment_fee:.2f}\n\n'
+            f'— The CampMondo Team'
+        )
+
+        safe_parent  = escape(parent_name)
+        safe_camper  = escape(camper_name)
+        safe_session = escape(session_name)
+        safe_start   = escape(session_start)
+        safe_end     = escape(session_end)
+
+        html_inner = (
+            f'<h2 style="margin:0 0 12px;color:#2c1810;font-family:Georgia,serif;">'
+            f'Enrollment Confirmed!</h2>'
+            f'<p>Hi {safe_parent},</p>'
+            f'<p><strong>{safe_camper}</strong> has been successfully enrolled in '
+            f'<strong>{safe_session}</strong>.</p>'
+            f'<table cellpadding="10" cellspacing="0" style="background:#f5f0e8;'
+            f'border-radius:8px;margin:20px 0;width:100%;">'
+            f'<tr><td><strong>Session:</strong></td><td>{safe_session}</td></tr>'
+            f'<tr><td><strong>Start Date:</strong></td><td>{safe_start}</td></tr>'
+            f'<tr><td><strong>End Date:</strong></td><td>{safe_end}</td></tr>'
+            f'<tr><td><strong>Enrollment Fee:</strong></td>'
+            f'<td style="color:#3d6b45;font-weight:600;">${enrollment_fee:.2f}</td></tr>'
+            f'</table>'
+            f'<p>We look forward to seeing {safe_camper} at camp!</p>'
+            f'<p style="margin-top:24px;">— The CampMondo Team</p>'
+        )
+
+        return send_email(parent_email, subject, body, html=_wrap_html(html_inner))
+    except Exception as exc:
+        logger.error(f'send_enrollment_confirmation crashed: {exc}')
+        print(f'[EMAIL HELPER CRASHED] send_enrollment_confirmation: {exc}')
+        return False
 
 def send_password_reset_email(user, raw_token: str) -> bool:
     """Sent when a user requests a password reset."""

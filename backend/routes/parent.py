@@ -9,7 +9,8 @@ from app.models.session import Session, ActivityProgram
 from app.models.announcement import Announcement
 from app.utils.auth_helpers import role_required, current_user
 from app.utils.email import send_email, send_payment_submitted_email
-
+from app.utils.email import send_enrollment_confirmation
+from app.utils.email import send_camper_registration_email
 
 parent_bp = Blueprint('parent', __name__)
 
@@ -262,7 +263,17 @@ def create_camper():
     )
     db.session.add(contact)
     db.session.commit()
-    send_email(user.email, 'Camper profile created', f'Camper profile for {camper.full_name} was created successfully.')
+    try:
+        send_camper_registration_email(
+            parent_email=user.email,
+            parent_name=user.full_name or 'Parent',
+            camper_name=camper.full_name,
+            date_of_birth=camper.date_of_birth.strftime('%B %d, %Y'),
+            gender=camper.gender,
+            medical_alerts=camper.medical_alerts
+        )
+    except Exception as e:
+        print(f'[EMAIL] Camper registration email failed: {e}')
     return ok(camper_with_contact(camper), 'Camper profile created', 201)
 
 
@@ -349,7 +360,25 @@ def create_enrollment():
     replace_enrollment_activities(enrollment, selected_activities)
     db.session.commit()
 
-    return ok(enrollment_with_details(enrollment), 'Camper enrolled in session', 201)
+    # ── Notify parent ───────────────────────────────────
+    try:
+        send_enrollment_confirmation(
+            parent_email=user.email,
+            parent_name=user.full_name or 'Parent',
+            camper_name=camper.full_name,
+            session_name=session.name,
+            session_start=session.start_date.strftime('%B %d, %Y') if session.start_date else 'TBD',
+            session_end=session.end_date.strftime('%B %d, %Y') if session.end_date else 'TBD',
+            enrollment_fee=float(session.enrollment_fee or 0)
+        )
+    except Exception as e:
+        print(f'[EMAIL] Enrollment confirmation failed: {e}')
+    # ────────────────────────────────────────────────────
+
+    item = enrollment.to_dict()
+    item['camper_name'] = camper.full_name
+    item['session'] = session.to_dict()
+    return ok(item, 'Camper enrolled in session', 201)
 
 
 @parent_bp.delete('/enrollments/<int:enrollment_id>')

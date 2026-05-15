@@ -171,6 +171,8 @@ def delete_session_activity(session_id, activity_id):
     db.session.delete(activity)
     db.session.commit()
     return ok(None, 'Activity deleted')
+
+
 # ═══════════════════════════════════════════════════════════
 #  GROUPS
 # ═══════════════════════════════════════════════════════════
@@ -319,7 +321,16 @@ def reactivate_staff(staff_id):
     db.session.commit()
     return ok(staff.to_dict(), 'Staff account reactivated')
 
-
+@admin_bp.delete('/staff/<int:staff_id>')
+@role_required('admin')
+def delete_staff(staff_id):
+    from app.models.user import User
+    staff = User.query.filter_by(id=staff_id, role='staff').first()
+    if not staff:
+        return fail('Staff member not found', 404)
+    db.session.delete(staff)
+    db.session.commit()
+    return ok(None, 'Staff account deleted')
 # ═══════════════════════════════════════════════════════════
 #  CAMPERS (admin lookup — used by Reports filter dropdowns)
 # ═══════════════════════════════════════════════════════════

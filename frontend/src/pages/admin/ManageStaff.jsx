@@ -37,6 +37,22 @@ const styles = `
   .form-actions { display: flex; gap: 10px; margin-top: 22px; }
   .form-hint { font-size: 12px; color: #8a7a65; margin-top: 14px; padding: 11px 14px; background: #fdf8f0; border-radius: 8px; border: 1px solid #f0e8d8; }
 
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #ede8df; border-radius: 10px; padding: 4px; width: fit-content; }
+  .tab {
+    padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; background: transparent; color: #8a7a65;
+    font-family: 'Inter', sans-serif; transition: all 0.15s;
+  }
+  .tab.active { background: #fff9f0; color: #2c1810; box-shadow: 0 1px 4px rgba(44,24,16,0.08); }
+  .tab-count {
+    display: inline-block; margin-left: 6px;
+    background: #f0e8d8; color: #8a7a65;
+    font-size: 10px; font-weight: 700; padding: 1px 7px;
+    border-radius: 20px;
+  }
+  .tab.active .tab-count { background: #e8d5b5; color: #5a4a35; }
+
   .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
   .section-title { font-size: 14px; font-weight: 600; color: #2c1810; }
   .section-count { font-size: 11px; color: #8a7a65; background: #f0e8d8; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
@@ -44,31 +60,21 @@ const styles = `
   .staff-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 
   .staff-card {
-    background: #fff9f0;
-    border: 1px solid #e8d5b5;
-    border-radius: 13px;
-    padding: 22px;
+    background: #fff9f0; border: 1px solid #e8d5b5;
+    border-radius: 13px; padding: 22px;
     transition: transform 0.2s, box-shadow 0.2s;
   }
-
   .staff-card:hover { transform: translateY(-2px); box-shadow: 0 5px 18px rgba(44,24,16,0.07); }
-  .staff-card.deactivated { opacity: 0.55; }
+  .staff-card.deactivated { opacity: 0.6; }
 
   .staff-card-top { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
-
   .staff-avatar {
-    width: 42px; height: 42px;
-    border-radius: 50%;
-    background: #2c4a2e;
-    color: #e8a838;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: #2c4a2e; color: #e8a838;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px;
-    font-weight: 700;
-    flex-shrink: 0;
+    font-size: 15px; font-weight: 700; flex-shrink: 0;
   }
-
   .staff-card.deactivated .staff-avatar { background: #e0d0b8; color: #a08c72; }
-
   .staff-name { font-size: 14px; font-weight: 600; color: #2c1810; }
   .staff-email { font-size: 12px; color: #a08c72; margin-top: 2px; }
 
@@ -80,7 +86,21 @@ const styles = `
   .badge-green { background: #e8f5e9; color: #2e7d32; }
   .badge-red { background: #fdecea; color: #c62828; }
 
-  .staff-actions { display: flex; gap: 8px; }
+  .staff-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Delete confirm modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(44,24,16,0.35);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .modal {
+    background: #fff9f0; border-radius: 16px; border: 1px solid #e8d5b5;
+    padding: 32px; max-width: 400px; width: 90%; text-align: center;
+  }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #2c1810; margin-bottom: 10px; }
+  .modal-body { font-size: 13px; color: #8a7a65; margin-bottom: 24px; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
 
   .empty-state { padding: 56px; text-align: center; color: #a08c72; background: #fff9f0; border-radius: 14px; border: 1px solid #e8d5b5; }
   .empty-icon { font-size: 38px; margin-bottom: 12px; }
@@ -94,6 +114,8 @@ export default function ManageStaff() {
     const [success, setSuccess]     = useState('')
     const [loading, setLoading]     = useState(false)
     const [showForm, setShowForm]   = useState(false)
+    const [activeTab, setActiveTab] = useState('active') // 'active' | 'inactive'
+    const [deleteTarget, setDeleteTarget] = useState(null) // staff object to confirm delete
 
     const loadStaff = () => {
         api.get('/admin/staff').then(r => setStaffList(r.data.data || []))
@@ -137,12 +159,47 @@ export default function ManageStaff() {
         }
     }
 
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        try {
+            await api.delete(`/admin/staff/${deleteTarget.id}`)
+            setSuccess(`${deleteTarget.full_name}'s account has been permanently deleted.`)
+            setDeleteTarget(null)
+            loadStaff()
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not delete staff account')
+            setDeleteTarget(null)
+        }
+    }
+
+    const activeStaff   = staffList.filter(s => s.is_active)
+    const inactiveStaff = staffList.filter(s => !s.is_active)
+    const displayed     = activeTab === 'active' ? activeStaff : inactiveStaff
+
     const initials = (name) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     const f = (key, val) => setForm(prev => ({...prev, [key]: val}))
 
     return (
         <>
             <style>{styles}</style>
+
+            {/* Delete confirmation modal */}
+            {deleteTarget && (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <div className="modal-title">Delete Staff Account?</div>
+                        <div className="modal-body">
+                            You are about to permanently delete <strong>{deleteTarget.full_name}</strong>'s account.
+                            This action cannot be undone.
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-danger" onClick={handleDelete}>Yes, Delete</button>
+                            <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="page-root">
                 <Navbar />
                 <div className="page-body">
@@ -188,19 +245,28 @@ export default function ManageStaff() {
                         </div>
                     )}
 
-                    <div className="section-header">
-                        <div className="section-title">All Staff</div>
-                        <div className="section-count">{staffList.length} members</div>
+                    {/* Active / Inactive tabs */}
+                    <div className="tabs">
+                        <button className={`tab ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>
+                            Active <span className="tab-count">{activeStaff.length}</span>
+                        </button>
+                        <button className={`tab ${activeTab === 'inactive' ? 'active' : ''}`} onClick={() => setActiveTab('inactive')}>
+                            Inactive <span className="tab-count">{inactiveStaff.length}</span>
+                        </button>
                     </div>
 
-                    {staffList.length === 0 ? (
+                    {displayed.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-icon">👥</div>
-                            <div className="empty-text">No staff accounts yet. Add your first staff member above.</div>
+                            <div className="empty-icon">{activeTab === 'active' ? '👥' : '🔒'}</div>
+                            <div className="empty-text">
+                                {activeTab === 'active'
+                                    ? 'No active staff accounts. Add your first staff member above.'
+                                    : 'No inactive staff accounts.'}
+                            </div>
                         </div>
                     ) : (
                         <div className="staff-grid">
-                            {staffList.map(s => (
+                            {displayed.map(s => (
                                 <div key={s.id} className={`staff-card ${!s.is_active ? 'deactivated' : ''}`}>
                                     <div className="staff-card-top">
                                         <div className="staff-avatar">{initials(s.full_name)}</div>
@@ -213,7 +279,7 @@ export default function ManageStaff() {
                                         <div className="staff-meta-row">
                                             <span className="staff-meta-label">Status</span>
                                             <span className={`badge ${s.is_active ? 'badge-green' : 'badge-red'}`}>
-                                                {s.is_active ? 'active' : 'deactivated'}
+                                                {s.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </div>
                                         {s.phone_number && (
@@ -228,6 +294,9 @@ export default function ManageStaff() {
                                             ? <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(s.id)}>Deactivate</button>
                                             : <button className="btn btn-success btn-sm" onClick={() => handleReactivate(s.id)}>Reactivate</button>
                                         }
+                                        <button className="btn btn-sm" style={{background:'#2c1810',color:'#fff'}} onClick={() => setDeleteTarget(s)}>
+                                            Delete
+                                        </button>
                                     </div>
                                 </div>
                             ))}
