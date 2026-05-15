@@ -9,7 +9,7 @@ class Announcement(db.Model):
     author_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title        = db.Column(db.String(200), nullable=False)
     body         = db.Column(db.Text, nullable=False)
-    target_type  = db.Column(db.Enum('system_wide', 'session', 'group'), nullable=False, default='system_wide')
+    target_type  = db.Column(db.Enum('system_wide', 'session', 'group', 'staff'), nullable=False, default='system_wide')
     target_id    = db.Column(db.Integer, nullable=True)
     published_at = db.Column(db.DateTime, default=datetime.utcnow)
 

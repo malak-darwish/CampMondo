@@ -29,6 +29,7 @@ import StaffDashboard from './pages/staff/StaffDashboard'
 import Attendance from './pages/staff/Attendance'
 import IncidentReport from './pages/staff/IncidentReport'
 import ActivityLog from './pages/staff/ActivityLog'
+import StaffAnnouncements from './pages/staff/StaffAnnouncements'
 
 export default function App() {
     return (
@@ -96,7 +97,11 @@ export default function App() {
                     <Route path='/staff/activity' element={
                         <Navigate to='/staff/activity-log' replace />
                     } />
-
+                     <Route path='/staff/announcements' element={
+                        <ProtectedRoute roles={['staff']}>
+                            <StaffAnnouncements />
+                        </ProtectedRoute>
+                    } />   
                     {/* Parent routes - guarded */}
                     <Route path='/parent' element={
                         <ProtectedRoute roles={['parent']}><Navigate to='/parent/dashboard' replace /></ProtectedRoute>

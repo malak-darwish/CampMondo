@@ -145,6 +145,7 @@ const staffLinks = [
     { href: '/staff/attendance', label: 'Attendance' },
     { href: '/staff/incidents',  label: 'Incidents' },
     { href: '/staff/activity-log', label: 'Activity Log' },
+    { href: '/staff/announcements', label: 'Announcements' },
 ]
 
 const parentLinks = [

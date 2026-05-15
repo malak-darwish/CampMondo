@@ -18,6 +18,7 @@ from app.utils.email import send_announcement_notification
 
 
 admin_bp = Blueprint('admin', __name__)
+staff_bp = Blueprint('staff', __name__)
 logger = logging.getLogger(__name__)
 
 
@@ -489,70 +490,63 @@ def create_announcement():
     current_user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
-    if not data.get('title') or not data.get('body'):
+    title = data.get('title', '').strip()
+    body  = data.get('body', '').strip()
+
+    if not title or not body:
         return fail('Title and body are required')
+
+    if len(body) < 10:
+        return fail('Announcement body must be at least 10 characters')
 
     announcement = Announcement(
         author_id   = current_user_id,
-        title       = data['title'],
-        body        = data['body'],
+        title       = title,
+        body        = body,
         target_type = data.get('target_type', 'system_wide'),
         target_id   = data.get('target_id')
     )
     db.session.add(announcement)
     db.session.commit()
 
-    # ── Notify parents ──────────────────────────────────────
+   # ── Notify users ──────────────────────────────────────
     try:
         target_type = data.get('target_type', 'system_wide')
-        target_id   = data.get('target_id')
 
         if target_type == 'system_wide':
-            parents = User.query.filter_by(role='parent', is_active=True).all()
-            label   = 'All Families'
+            users = User.query.filter_by(
+                role='parent',
+                is_active=True
+            ).all()
 
-        elif target_type == 'session':
-            parents = (
-                db.session.query(User)
-                .join(Camper, Camper.parent_id == User.id)
-                .join(Enrollment, Enrollment.camper_id == Camper.id)
-                .filter(Enrollment.session_id == target_id, Enrollment.status == 'active')
-                .distinct().all()
-            )
-            s     = Session.query.get(target_id)
-            label = f'Session: {s.name}' if s else 'Your Session'
+            label = 'All Families'
 
-        elif target_type == 'group':
-            parents = (
-                db.session.query(User)
-                .join(Camper, Camper.parent_id == User.id)
-                .join(Enrollment, Enrollment.camper_id == Camper.id)
-                .filter(Enrollment.group_id == target_id, Enrollment.status == 'active')
-                .distinct().all()
-            )
-            g     = Group.query.get(target_id)
-            label = f'Group: {g.name}' if g else 'Your Group'
+        elif target_type == 'staff':
+            users = User.query.filter_by(
+                role='staff',
+                is_active=True
+            ).all()
+
+            label = 'Staff Members'
 
         else:
-            parents = []
-            label   = 'CampMondo'
+            users = []
+            label = 'CampMondo'
 
-        for parent in parents:
-            if parent.email:
+        for user in users:
+            if user.email:
                 send_announcement_notification(
-                    parent_email = parent.email,
-                    parent_name  = parent.full_name or 'Parent',
+                    parent_email = user.email,
+                    parent_name  = user.full_name or 'User',
                     title        = data['title'],
                     body_text    = data['body'],
                     target_label = label
                 )
+
     except Exception as e:
         logger.warning(f'Announcement email(s) failed: {e}')
-    # ────────────────────────────────────────────────────────
-
     return ok(announcement.to_dict(), 'Announcement posted', 201)
-
-
+    # ────────────────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════
 #  INCIDENT REPORTS (admin view)
 # ═══════════════════════════════════════════════════════════

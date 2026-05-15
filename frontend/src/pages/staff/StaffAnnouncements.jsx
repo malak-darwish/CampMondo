@@ -92,12 +92,18 @@ export default function AdminAnnouncements() {
     const [error, setError]     = useState('')
     const [success, setSuccess] = useState('')
     const [loading, setLoading] = useState(false)
+    const [groups, setGroups] = useState([])
 
     const loadAnnouncements = () => {
-        api.get('/admin/announcements').then(r => setAnnouncements(r.data.data || []))
+        api.get('/staff/announcements').then(r => setAnnouncements(r.data.data || []))
     }
 
-    useEffect(() => { loadAnnouncements() }, [])
+     useEffect(() => {
+    loadAnnouncements()
+
+    api.get('/staff/groups')
+        .then(r => setGroups(r.data.data || []))
+}, [])
 
     const handleSubmit = async () => {
         setError(''); setSuccess('')
@@ -105,17 +111,12 @@ export default function AdminAnnouncements() {
         setLoading(true)
         try {
             const payload = {
-                title: form.title,
-                body: form.body,
-                target_type: form.target_type
+                ...form,
+                target_id: form.target_id ? parseInt(form.target_id) : null
             }
-            await api.post('/admin/announcements', payload)
-            setSuccess('Announcement posted successfully')
-            setForm({
-                title: '',
-                body: '',
-                target_type: 'system_wide'
-            })
+            await api.post('/staff/announcements', payload)
+            setSuccess('Staff posted successfully')
+            setForm({ title: '', body: '', target_type: 'system_wide', target_id: '' })
             loadAnnouncements()
         } catch (err) {
             setError(err.response?.data?.message || 'Error posting announcement')
@@ -129,7 +130,7 @@ export default function AdminAnnouncements() {
     const targetBadge = (type) => {
         if (type === 'system_wide') return <span className="badge badge-green">System-wide</span>
         if (type === 'session')     return <span className="badge badge-amber">Session</span>
-        return <span className="badge badge-brown">Staff</span>
+        return <span className="badge badge-brown">Group</span>
     }
 
     const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -195,10 +196,46 @@ export default function AdminAnnouncements() {
                                 <label className="form-label">Target Audience</label>
                                 <select className="form-select" value={form.target_type} onChange={e => f('target_type', e.target.value)}>
                                     <option value="system_wide">Everyone (System-wide)</option>
-                                   <option value="staff">Staff Only</option>
+                                    <option value="session">Specific Session</option>
+                                    <option value="group">Specific Group</option>
                                 </select>
                             </div>
 
+                            {form.target_type !== 'system_wide' && (
+                        <div className="form-field">
+                            <label className="form-label">
+                                {form.target_type === 'session' ? 'Select Session' : 'Select Group'}
+                            </label>
+
+                            <select
+                                className="form-select"
+                                value={form.target_id}
+                                onChange={e => f('target_id', e.target.value)}
+                            >
+                                <option value="">Choose...</option>
+
+                                {form.target_type === 'session'
+                                    ? [...new Map(groups.map(g => [
+                                        g.session_id,
+                                        {
+                                            id: g.session_id,
+                                            name: g.session_name
+                                        }
+                                    ])).values()].map(session => (
+                                        <option key={session.id} value={session.id}>
+                                            {session.name}
+                                        </option>
+                                    ))
+
+                                    : groups.map(group => (
+                                        <option key={group.id} value={group.id}>
+                                            {group.name}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+                    )}
 
                             <button className="btn btn-primary" style={{width:'100%'}} onClick={handleSubmit} disabled={loading}>
                                 {loading ? 'Posting...' : '📢 Post Announcement'}

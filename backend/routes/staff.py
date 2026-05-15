@@ -1,8 +1,9 @@
 from datetime import datetime
+from venv import logger
 
 from app.models.session import Session
 import app
-from app.utils.email import send_incident_notification
+from app.utils.email import send_announcement_notification, send_incident_notification
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -15,6 +16,7 @@ from app.models.group import Group
 from app.models.incident import IncidentReport
 from app.models.user import User
 from app.utils.auth_helpers import role_required
+from app.models.announcement import Announcement
 
 
 staff_bp = Blueprint('staff', __name__)
@@ -531,7 +533,87 @@ def dashboard_stats():
         'total_activities': total_activities,
     })
 
+@staff_bp.get('/announcements')
+@role_required('staff')
+def staff_get_announcements():
+    announcements = Announcement.query.order_by(
+        Announcement.published_at.desc()
+    ).all()
 
+    return ok([a.to_dict() for a in announcements])
+
+@staff_bp.post('/announcements')
+@role_required('staff')
+def staff_create_announcement():
+    current_user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    title = data.get('title', '').strip()
+    body  = data.get('body', '').strip()
+
+    if not title or not body:
+        return fail('Title and body are required')
+
+    if len(body) < 10:
+        return fail('Announcement body must be at least 10 characters')
+
+    announcement = Announcement(
+        author_id   = current_user_id,
+        title       = title,
+        body        = body,
+        target_type = data.get('target_type', 'system_wide'),
+        target_id   = data.get('target_id')
+    )
+
+    db.session.add(announcement)
+    db.session.commit()
+    try:
+        target_type = data.get('target_type', 'system_wide')
+        target_id   = data.get('target_id')
+
+        if target_type == 'system_wide':
+            parents = User.query.filter_by(role='parent', is_active=True).all()
+            label   = 'All Families'
+
+        elif target_type == 'session':
+            parents = (
+                db.session.query(User)
+                .join(Camper, Camper.parent_id == User.id)
+                .join(Enrollment, Enrollment.camper_id == Camper.id)
+                .filter(Enrollment.session_id == target_id, Enrollment.status == 'active')
+                .distinct().all()
+            )
+            s     = Session.query.get(target_id)
+            label = f'Session: {s.name}' if s else 'Your Session'
+
+        elif target_type == 'group':
+            parents = (
+                db.session.query(User)
+                .join(Camper, Camper.parent_id == User.id)
+                .join(Enrollment, Enrollment.camper_id == Camper.id)
+                .filter(Enrollment.group_id == target_id, Enrollment.status == 'active')
+                .distinct().all()
+            )
+            g     = Group.query.get(target_id)
+            label = f'Group: {g.name}' if g else 'Your Group'
+
+        else:
+            parents = []
+            label   = 'CampMondo'
+
+        for parent in parents:
+            if parent.email:
+                send_announcement_notification(
+                    parent_email = parent.email,
+                    parent_name  = parent.full_name or 'Parent',
+                    title        = data['title'],
+                    body_text    = data['body'],
+                    target_label = label
+                )
+    except Exception as e:
+        logger.warning(f'Announcement email(s) failed: {e}')
+    # ────────────────────────────────────────────────────────
+    return ok(announcement.to_dict(), 'Announcement posted', 201)
 @staff_bp.get('/recent-activity')
 @role_required('staff')
 def recent_activity():
