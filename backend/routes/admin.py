@@ -83,16 +83,24 @@ def get_sessions():
     sessions = Session.query.all()
     return ok([s.to_dict() for s in sessions])
 
-
 @admin_bp.post('/sessions')
 @role_required('admin')
 def create_session():
+    from datetime import date                          # move this to top of file ideally
+
     current_user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     required = ['name', 'start_date', 'end_date', 'max_capacity', 'enrollment_fee']
     if any(not data.get(f) for f in required):
         return fail('All session fields are required')
+
+    # date validation — must come before anything touches the DB
+    today = str(date.today())
+    if data['start_date'] < today:
+        return fail('Session start date cannot be in the past')
+    if data['end_date'] <= data['start_date']:
+        return fail('End date must be after start date')
 
     # FR 4.6: prevent overlapping session dates
     overlap = Session.query.filter(
@@ -130,7 +138,6 @@ def create_session():
 
     db.session.commit()
     return ok(new_session.to_dict(), 'Session created', 201)
-
 
 @admin_bp.put('/sessions/<int:session_id>')
 @role_required('admin')

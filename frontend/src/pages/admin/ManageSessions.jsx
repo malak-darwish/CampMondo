@@ -265,11 +265,11 @@ export default function ManageSessions() {
                 </div>
                 <div className="form-field">
                   <label className="form-label">Start Date</label>
-                  <input className="form-input" type="date" value={form.start_date} onChange={e => f('start_date', e.target.value)} />
+                  <input className="form-input" type="date" value={form.start_date} min={new Date().toISOString().split('T')[0]} onChange={e => f('start_date', e.target.value)} />
                 </div>
                 <div className="form-field">
                   <label className="form-label">End Date</label>
-                  <input className="form-input" type="date" value={form.end_date} onChange={e => f('end_date', e.target.value)} />
+                  <input className="form-input" type="date" value={form.end_date} min={new Date().toISOString().split('T')[0]} onChange={e => f('end_date', e.target.value)} />
                 </div>
                 <div className="form-field">
                   <label className="form-label">Max Capacity</label>
